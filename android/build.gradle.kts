@@ -1,3 +1,17 @@
+plugins {
+  // ...
+
+  // Add the dependency for the Google services Gradle plugin
+  id("com.google.gms.google-services") version "4.4.4" apply false
+
+}
+buildscript {
+    dependencies {
+        // Google Services plugin for Firebase
+        classpath("com.google.gms:google-services:4.4.0")
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -5,18 +19,18 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory =
-    rootProject.layout.buildDirectory
-        .dir("../../build")
-        .get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+// Fix build directory (Flutter Android restructure)
+val newBuildDir = rootProject.layout.buildDirectory.dir("../../build")
 
-subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+rootProject.layout.buildDirectory.set(newBuildDir)
+
+subprocess {
+    val newSubBuildDir = newBuildDir.map { it.dir(project.name) }
+    project.layout.buildDirectory.set(newSubBuildDir)
 }
-subprojects {
-    project.evaluationDependsOn(":app")
+
+subprocess {
+    evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
