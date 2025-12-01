@@ -1,41 +1,39 @@
+// models/user_model.dart
 class AppUser {
   final String uid;
-  final String? name;
-  final String? email;
+  final String email;
+  final String name;
   final String? photoUrl;
-  final String? role; // 'freelancer' or 'client' or null
-  final bool verified;
-  final bool onboarded;
+  final String? role; // 'freelancer' or 'client'
+  final bool? onboarded;
 
   AppUser({
     required this.uid,
-    this.name,
-    this.email,
+    required this.email,
+    required this.name,
     this.photoUrl,
     this.role,
-    this.verified = false,
-    this.onboarded = false,
+    this.onboarded,
   });
 
-  factory AppUser.fromMap(String uid, Map<String, dynamic> data) {
+  factory AppUser.fromMap(Map<String, dynamic> map) {
     return AppUser(
-      uid: uid,
-      name: data['name'] as String?,
-      email: data['email'] as String?,
-      photoUrl: data['photoUrl'] as String?,
-      role: data['role'] as String?,
-      verified: data['verified'] as bool? ?? false,
-      onboarded: data['onboarded'] as bool? ?? false,
+      uid: map['uid'] ?? '',
+      email: map['email'] ?? '',
+      name: map['name'] ?? 'User',
+      photoUrl: map['photoUrl'],
+      role: map['role'],
+      onboarded: map['onboarded'] ?? false,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
+      'uid': uid,
       'email': email,
+      'name': name,
       'photoUrl': photoUrl,
       'role': role,
-      'verified': verified,
       'onboarded': onboarded,
     };
   }

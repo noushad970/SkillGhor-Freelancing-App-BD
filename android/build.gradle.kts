@@ -24,12 +24,12 @@ val newBuildDir = rootProject.layout.buildDirectory.dir("../../build")
 
 rootProject.layout.buildDirectory.set(newBuildDir)
 
-subprocess {
+subprojects {
     val newSubBuildDir = newBuildDir.map { it.dir(project.name) }
     project.layout.buildDirectory.set(newSubBuildDir)
 }
 
-subprocess {
+subprojects {
     evaluationDependsOn(":app")
 }
 
