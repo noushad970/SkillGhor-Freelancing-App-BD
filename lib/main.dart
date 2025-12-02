@@ -1,12 +1,14 @@
 // main.dart
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:skill_ghor/firebase_options.dart';
+import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/role_selection_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/freelancer_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,15 +24,19 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'FreelanceHub',
+      title: 'Skill Ghor',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.deepPurple, useMaterial3: true),
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        useMaterial3: true,
+        fontFamily: 'Roboto',
+      ),
       home: const AuthGate(),
+      routes: {'/home': (_) => const HomeScreen()},
     );
   }
 }
 
-// Smart routing based on AuthState
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -41,7 +47,8 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: authService.authState$,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            !snapshot.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
@@ -49,14 +56,9 @@ class AuthGate extends StatelessWidget {
 
         final state = snapshot.data!;
 
-        if (!state.signedIn) {
-          return const SignInScreen();
-        }
-
-        if (!state.hasRole) {
-          return const RoleSelectionScreen();
-        }
-
+        if (!state.signedIn) return const SignInScreen();
+        if (!state.hasRole) return const RoleSelectionScreen();
+        if (!state.onboarded) return OnboardingScreen(role: state.role!);
         return const HomeScreen();
       },
     );

@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:skill_ghor/screens/client_home_screen.dart';
+import 'package:skill_ghor/screens/freelancer_home_screen.dart';
 import '../services/auth_service.dart';
 import 'freelancer_dashboard.dart';
 import 'client_dashboard.dart';
@@ -17,7 +19,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FreelanceHub'),
+        title: const Text('Skill Ghor'),
         backgroundColor: Colors.deepPurple.shade600,
         foregroundColor: Colors.white,
         elevation: 4,
@@ -48,7 +50,7 @@ class HomeScreen extends StatelessWidget {
           final data = snapshot.data!.data()!;
           final String name = data['name'] ?? user.displayName ?? 'User';
           final String role = data['role'] ?? 'unknown';
-          final String photoUrl = data['photoUrl'] ?? user.photoURL;
+          final String? photoUrl = data['photoUrl'] ?? user.photoURL;
           final bool verified = data['verified'] == true;
 
           return Column(
@@ -137,9 +139,9 @@ class HomeScreen extends StatelessWidget {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
                   child: role == 'freelancer'
-                      ? const FreelancerDashboard(key: ValueKey('freelancer'))
+                      ? const FreelancerHomeScreen(key: ValueKey('freelancer'))
                       : role == 'client'
-                      ? const ClientDashboard(key: ValueKey('client'))
+                      ? const ClientHomeScreen(key: ValueKey('client'))
                       : _buildRoleNotSelected(context),
                 ),
               ),
@@ -164,7 +166,6 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 12),
           ElevatedButton(
             onPressed: () {
-              // You can navigate to role selection again if needed
               Navigator.pushReplacementNamed(context, '/role-selection');
             },
             child: const Text('Choose Your Role'),

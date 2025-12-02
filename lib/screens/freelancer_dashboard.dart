@@ -1,3 +1,4 @@
+// screens/freelancer_dashboard.dart
 import 'package:flutter/material.dart';
 
 class FreelancerDashboard extends StatelessWidget {
@@ -20,11 +21,7 @@ class FreelancerDashboard extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.work_outline,
-                    size: 100,
-                    color: Colors.green.shade400,
-                  ),
+                  Icon(Icons.search, size: 100, color: Colors.green.shade400),
                   const SizedBox(height: 20),
                   const Text(
                     'Browse thousands of jobs',

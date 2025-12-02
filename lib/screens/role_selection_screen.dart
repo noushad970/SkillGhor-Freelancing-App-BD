@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import 'onboarding_screen.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -10,65 +11,67 @@ class RoleSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade50,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Text(
-              'How do you want to use FreelanceHub?',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Choose one to get started',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-            ),
-            const SizedBox(height: 60),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Freelancer Card
-                _RoleCard(
-                  title: 'Freelancer',
-                  subtitle: 'Find jobs & earn money',
-                  icon: Icons.code,
-                  color: Colors.green,
-                  onTap: () => _selectRole(context, 'freelancer'),
-                ),
-
-                // Client Card
-                _RoleCard(
-                  title: 'Client',
-                  subtitle: 'Hire top talent',
-                  icon: Icons.business,
-                  color: Colors.blue,
-                  onTap: () => _selectRole(context, 'client'),
-                ),
-              ],
-            ),
-
-            const Spacer(),
-            Text(
-              'You can change this later in settings',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.work, size: 100, color: Colors.deepPurple.shade700),
+              const SizedBox(height: 32),
+              const Text(
+                'Welcome to FreelanceHub!',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'How will you use the platform?',
+                style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 60),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _RoleCard(
+                    title: 'I\'m a Freelancer',
+                    subtitle: 'Find jobs & earn money',
+                    icon: Icons.code,
+                    color: Colors.green,
+                    onTap: () => _selectRole(context, 'freelancer'),
+                  ),
+                  _RoleCard(
+                    title: 'I\'m a Client',
+                    subtitle: 'Hire top talent',
+                    icon: Icons.business,
+                    color: Colors.blue,
+                    onTap: () => _selectRole(context, 'client'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 60),
+              Text(
+                'You can change this later in settings',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   void _selectRole(BuildContext context, String role) async {
-    final auth = Provider.of<AuthService>(context, listen: false);
-    await auth.setRole(role: role);
-    // Automatically goes to HomeScreen via AuthState stream
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.setRole(role: role);
+    if (context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => OnboardingScreen(role: role)),
+      );
+    }
   }
 }
 
@@ -94,7 +97,7 @@ class _RoleCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 160,
-        height: 220,
+        height: 200,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -111,19 +114,23 @@ class _RoleCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 40,
-              backgroundColor: color.withOpacity(0.2),
-              child: Icon(icon, size: 50, color: color),
+              backgroundColor: color.withOpacity(0.15),
+              child: Icon(icon, size: 48, color: color),
             ),
             const SizedBox(height: 20),
             Text(
               title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: TextStyle(color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                subtitle,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
             ),
           ],
         ),

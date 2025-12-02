@@ -18,7 +18,6 @@ class SignInScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo / App Name
               const Icon(
                 Icons.work_outline,
                 size: 100,
@@ -26,12 +25,11 @@ class SignInScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const Text(
-                'FreelanceHub',
+                'Skill Ghor',
                 style: TextStyle(
                   fontSize: 42,
                   fontWeight: FontWeight.bold,
                   color: Colors.deepPurple,
-                  letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 12),
@@ -44,18 +42,17 @@ class SignInScreen extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.12),
 
-              // Google Sign-In Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    final auth = Provider.of<AuthService>(
+                    final authService = Provider.of<AuthService>(
                       context,
                       listen: false,
                     );
                     try {
-                      await auth.signInWithGoogle();
+                      await authService.signInWithGoogle();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,11 +61,12 @@ class SignInScreen extends StatelessWidget {
                       }
                     }
                   },
-                  icon: Image.asset(
-                    'assets/google_logo.png', // Add this PNG in assets/
+                  icon: Image.network(
+                    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png',
                     height: 24,
                     width: 24,
                   ),
+
                   label: const Text(
                     'Continue with Google',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),

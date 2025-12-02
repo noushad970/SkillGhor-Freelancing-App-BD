@@ -8,7 +8,7 @@ import '../models/user_model.dart';
 
 class AuthState {
   final bool signedIn;
-  final String? role; // 'freelancer' or 'client'
+  final String? role;
   final bool hasRole;
   final bool onboarded;
   final AppUser? user;
@@ -20,12 +20,6 @@ class AuthState {
     required this.onboarded,
     this.user,
   });
-
-  // Helper for easy debugging
-  @override
-  String toString() {
-    return 'AuthState(signedIn: $signedIn, role: $role, hasRole: $hasRole, onboarded: $onboarded)';
-  }
 }
 
 class AuthService extends ChangeNotifier {
@@ -33,20 +27,22 @@ class AuthService extends ChangeNotifier {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  // Public reactive stream
-  final StreamController<AuthState> _authStateController =
-      StreamController<AuthState>.broadcast();
-  Stream<AuthState> get authState$ => _authStateController.stream;
+  // Public getter for current user
+  User? get currentUser => _auth.currentUser;
 
-  StreamSubscription<User?>? _firebaseUserSub;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _userDocSub;
+  final StreamController<AuthState> _stateController =
+      StreamController<AuthState>.broadcast();
+  Stream<AuthState> get authState$ => _stateController.stream;
+
+  StreamSubscription<User?>? _authSubscription;
+  StreamSubscription<DocumentSnapshot>? _userDocSubscription;
 
   AuthService() {
-    _firebaseUserSub = _auth.authStateChanges().listen(_onFirebaseUserChanged);
+    _authSubscription = _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 
-  Future<void> _onFirebaseUserChanged(User? firebaseUser) async {
-    await _userDocSub?.cancel();
+  Future<void> _onAuthStateChanged(User? firebaseUser) async {
+    await _userDocSubscription?.cancel();
 
     if (firebaseUser == null) {
       _emit(AuthState(signedIn: false, hasRole: false, onboarded: false));
@@ -55,33 +51,35 @@ class AuthService extends ChangeNotifier {
 
     final docRef = _db.collection('users').doc(firebaseUser.uid);
 
-    _userDocSub = docRef.snapshots().listen((snapshot) async {
+    _userDocSubscription = docRef.snapshots().listen((snapshot) async {
       if (!snapshot.exists) {
-        // First time user → create minimal profile
-        final basicUser = {
+        final initialData = {
           'uid': firebaseUser.uid,
-          'name': firebaseUser.displayName ?? 'User',
-          'email': firebaseUser.email ?? '',
+          'email': firebaseUser.email,
+          'name': firebaseUser.displayName ?? '',
           'photoUrl': firebaseUser.photoURL,
           'role': null,
           'onboarded': false,
           'createdAt': FieldValue.serverTimestamp(),
         };
-
-        await docRef.set(basicUser);
-        _emit(AuthState(signedIn: true, hasRole: false, onboarded: false));
-        return;
+        await docRef.set(initialData);
       }
 
-      final data = snapshot.data()!;
-      final appUser = AppUser.fromMap(data);
+      final data = snapshot.data() as Map<String, dynamic>? ?? {};
+      final appUser = AppUser.fromMap({
+        ...data,
+        'uid': firebaseUser.uid,
+        'email': firebaseUser.email ?? '',
+        'name': data['name'] ?? firebaseUser.displayName ?? 'User',
+        'photoUrl': data['photoUrl'] ?? firebaseUser.photoURL,
+      });
 
       _emit(
         AuthState(
           signedIn: true,
           role: appUser.role,
           hasRole: appUser.role != null,
-          onboarded: appUser.onboarded ?? false,
+          onboarded: appUser.onboarded,
           user: appUser,
         ),
       );
@@ -89,53 +87,46 @@ class AuthService extends ChangeNotifier {
   }
 
   void _emit(AuthState state) {
-    if (!_authStateController.isClosed) {
-      _authStateController.add(state);
+    if (!_stateController.isClosed) {
+      _stateController.add(state);
     }
+    notifyListeners();
   }
 
-  // GOOGLE SIGN IN (Only method)
   Future<void> signInWithGoogle() async {
     try {
       if (kIsWeb) {
         final provider = GoogleAuthProvider();
         await _auth.signInWithPopup(provider);
       } else {
-        final GoogleSignInAccount? googleUser = await _googleSignIn
-            .authenticate();
-        if (googleUser == null) return; // User canceled
+        final googleUser = await _googleSignIn.authenticate();
+        if (googleUser == null) return;
 
-        final GoogleSignInAuthentication googleAuth =
-            await googleUser.authentication;
-
+        final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.idToken,
           idToken: googleAuth.idToken,
         );
-
         await _auth.signInWithCredential(credential);
       }
     } catch (e) {
-      debugPrint('Google Sign-In Failed: $e');
+      debugPrint('Google Sign-In Error: $e');
       rethrow;
     }
   }
 
-  // Sign Out
-  Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
-  }
-
-  // Set Role (Freelancer or Client) + Onboarding
   Future<void> setRole({
-    required String role, // 'freelancer' or 'client'
+    required String role,
     Map<String, dynamic> extraFields = const {},
   }) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = currentUser?.uid;
     if (uid == null) return;
 
-    final payload = {'role': role, 'onboarded': true, ...extraFields};
+    final payload = {
+      'role': role,
+      'onboarded': extraFields['onboarded'] ?? false,
+      ...extraFields,
+    };
 
     await _db
         .collection('users')
@@ -143,11 +134,16 @@ class AuthService extends ChangeNotifier {
         .set(payload, SetOptions(merge: true));
   }
 
+  Future<void> signOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+  }
+
   @override
   void dispose() {
-    _firebaseUserSub?.cancel();
-    _userDocSub?.cancel();
-    _authStateController.close();
+    _authSubscription?.cancel();
+    _userDocSubscription?.cancel();
+    _stateController.close();
     super.dispose();
   }
 }
