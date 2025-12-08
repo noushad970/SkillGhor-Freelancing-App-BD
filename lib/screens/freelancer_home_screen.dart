@@ -377,6 +377,30 @@ class FreelancerHomeScreen extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
+            if (snapshot.hasError) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.error, color: Colors.red, size: 48),
+                      Text('Error loading jobs: ${snapshot.error}'),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => const FreelancerHomeScreen(),
+                            ),
+                          );
+                        }, // Refresh by rebuilding the screen
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return const Card(
                 child: Padding(
