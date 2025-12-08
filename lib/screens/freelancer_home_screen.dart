@@ -1,14 +1,14 @@
-// screens/freelancer_dashboard.dart
+// lib/screens/freelancer_home_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:skill_ghor/screens/edit_profile_screen.dart';
-import 'package:skill_ghor/screens/freelancer_edit_profile_screen.dart';
-
-var connect = 0;
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import 'freelancer_edit_profile_screen.dart'; // Import the freelancer-specific edit screen
 
 class FreelancerHomeScreen extends StatelessWidget {
   const FreelancerHomeScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,6 +32,11 @@ class FreelancerHomeScreen extends StatelessWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {},
           ),
+          CircleAvatar(
+            backgroundColor: Colors.green.shade100,
+            child: const Icon(Icons.person, color: Colors.green),
+          ),
+          const SizedBox(width: 12),
         ],
       ),
 
@@ -41,32 +46,42 @@ class FreelancerHomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome + Profile Completion
+            // Welcome + Profile Completion (Dynamic)
             _buildWelcomeCard(context),
             const SizedBox(height: 20),
 
             // Quick Stats
+            _buildStatsRow(),
             const SizedBox(height: 20),
 
             // Section Buttons
             _buildSectionCard(
+              context,
               "Matched Jobs",
               Icons.auto_awesome,
               Colors.purple,
             ),
-            _buildSectionCard("Recent Jobs", Icons.work_outline, Colors.blue),
             _buildSectionCard(
+              context,
+              "Recent Jobs",
+              Icons.work_outline,
+              Colors.blue,
+            ),
+            _buildSectionCard(
+              context,
               "Saved Jobs",
               Icons.bookmark_border,
               Colors.orange,
             ),
-            _buildSectionCard("My Proposals", Icons.send, Colors.teal),
+            _buildSectionCard(context, "My Proposals", Icons.send, Colors.teal),
             _buildSectionCard(
+              context,
               "Active Contracts",
               Icons.handshake_outlined,
               Colors.green,
             ),
             _buildSectionCard(
+              context,
               "Earnings & Reports",
               Icons.bar_chart,
               Colors.indigo,
@@ -74,8 +89,8 @@ class FreelancerHomeScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Best Matches Section (Mini Job List Preview)
-            _buildBestMatchesSection(),
+            // Best Matches Section (Real-time Jobs from Firestore)
+            _buildBestMatchesSection(context),
           ],
         ),
       ),
@@ -105,17 +120,21 @@ class FreelancerHomeScreen extends StatelessWidget {
           .doc(user.uid)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox();
+        if (!snapshot.hasData) {
+          return const SizedBox(); // Or loading indicator
+        }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'User';
         final completion = data['profileCompletion'] ?? 0;
         final connects = data['connects'] ?? 20;
         final isVerified = data['isVerified'] == true;
-        connect = connects;
 
         return Card(
           elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -124,11 +143,15 @@ class FreelancerHomeScreen extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 35,
-                      backgroundImage: user.photoURL != null
-                          ? NetworkImage(user.photoURL!)
+                      backgroundImage: data['photoUrl'] != null
+                          ? NetworkImage(data['photoUrl'])
                           : null,
-                      child: user.photoURL == null
-                          ? const Icon(Icons.person, size: 40)
+                      child: data['photoUrl'] == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 40,
+                              color: Colors.green,
+                            )
                           : null,
                     ),
                     const SizedBox(width: 16),
@@ -141,7 +164,7 @@ class FreelancerHomeScreen extends StatelessWidget {
                               Text(
                                 name,
                                 style: const TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -156,10 +179,10 @@ class FreelancerHomeScreen extends StatelessWidget {
                             ],
                           ),
                           Text(
-                            "Available Connects: $connects",
+                            'Available Connects: $connects',
                             style: TextStyle(
                               color: Colors.green.shade700,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -178,8 +201,11 @@ class FreelancerHomeScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                "$completion% Complete",
-                                style: const TextStyle(fontSize: 12),
+                                '$completion% Complete',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -193,29 +219,39 @@ class FreelancerHomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const FreelancerEditProfileScreen(),
-                        ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FreelancerEditProfileScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.edit, size: 18),
+                      label: const Text('Edit Profile'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
                       ),
-                      icon: const Icon(Icons.edit),
-                      label: const Text("Edit Profile"),
                     ),
                     if (!isVerified)
                       OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                        ),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('ID Verification coming soon!'),
+                              content: Text(
+                                'ID Verification with NID/Passport coming soon!',
+                              ),
+                              backgroundColor: Colors.orange,
                             ),
                           );
                         },
-                        icon: const Icon(Icons.badge_outlined),
-                        label: const Text("Verify ID"),
+                        icon: const Icon(Icons.badge_outlined, size: 18),
+                        label: const Text('Verify ID'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange,
+                          side: BorderSide(color: Colors.orange.shade300),
+                        ),
                       ),
                   ],
                 ),
@@ -227,99 +263,356 @@ class FreelancerHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionCard(String title, IconData icon, Color color) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
+  Widget _buildStatsRow() {
+    final user = FirebaseAuth.instance.currentUser!;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox();
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final connects = data['connects'] ?? 20;
+        final earnings = data['totalEarnings'] ?? 0;
+        final proposals = data['proposalsSent'] ?? 0;
+
+        return Row(
+          children: [
+            _buildStatCard("Connects", connects.toString(), Icons.vpn_key),
+            const SizedBox(width: 12),
+            _buildStatCard("Proposals", proposals.toString(), Icons.send),
+            const SizedBox(width: 12),
+            _buildStatCard(
+              "Earnings",
+              "৳${earnings.toStringAsFixed(0)}",
+              Icons.account_balance_wallet,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon) {
+    return Expanded(
+      child: Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            children: [
+              Icon(icon, size: 28, color: Colors.green.shade600),
+              const SizedBox(height: 8),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                title,
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          // Navigate to respective screen
-        },
       ),
     );
   }
 
-  Widget _buildBestMatchesSection() {
+  Widget _buildSectionCard(
+    BuildContext context,
+    String title,
+    IconData icon,
+    Color color,
+  ) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Builder(
+        builder: (cardContext) => ListTile(
+          leading: CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            child: Icon(icon, color: color),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            ScaffoldMessenger.of(
+              cardContext,
+            ).showSnackBar(SnackBar(content: Text('$title clicked')));
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBestMatchesSection(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser!;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Best Matches",
+          "Recommended Jobs",
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        ...List.generate(
-          3,
-          (index) => _buildJobCard(
-            title: [
-              "Flutter Developer Needed",
-              "UI/UX Designer for Mobile App",
-              "Backend Developer (Node.js)",
-            ][index],
-            budget: [
-              "৳25,000 - ৳40,000",
-              "Fixed: ৳15,000",
-              "Hourly: ৳800/hr",
-            ][index],
-            posted: "2 hours ago",
-            match: 95 - index * 5,
-          ),
+        StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('jobs')
+              .where('status', isEqualTo: 'open')
+              .orderBy('postedAt', descending: true)
+              .limit(5)
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text(
+                    'No jobs available yet. Check back soon!',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+
+            final jobs = snapshot.data!.docs;
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: jobs.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final jobDoc = jobs[index];
+                final job = jobDoc.data() as Map<String, dynamic>;
+                final jobId = jobDoc.id;
+                final applicants = List<String>.from(job['applicants'] ?? []);
+                final isApplied = applicants.contains(user.uid);
+
+                return Card(
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Client Info
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundImage: job['clientPhotoUrl'] != null
+                                  ? NetworkImage(job['clientPhotoUrl'])
+                                  : null,
+                              child: job['clientPhotoUrl'] == null
+                                  ? const Icon(Icons.business, size: 20)
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        job['clientName'],
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        job['isClientVerified']
+                                            ? Icons.verified
+                                            : Icons.verified_user_outlined,
+                                        color: job['isClientVerified']
+                                            ? Colors.blue
+                                            : Colors.grey,
+                                        size: 16,
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    _timeAgo(job['postedAt']),
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Job Title
+                        Text(
+                          job['title'],
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Description
+                        Text(
+                          job['description'],
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Required Skills
+                        Wrap(
+                          spacing: 6,
+                          children: (job['requiredSkills'] as List<dynamic>)
+                              .map(
+                                (skill) => Chip(
+                                  label: Text(skill.toString()),
+                                  backgroundColor: Colors.green.shade100,
+                                  labelStyle: const TextStyle(fontSize: 12),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Budget & Deadline
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${job['budgetType']} • ৳${job['budget']}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            Text(
+                              'Deadline: ${_formatDate(job['deadline'])}',
+                              style: TextStyle(color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Apply Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isApplied
+                                  ? Colors.grey
+                                  : Colors.green.shade600,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: isApplied
+                                ? null
+                                : () => _applyToJob(jobId, context, user.uid),
+                            child: Text(
+                              isApplied ? 'Applied' : 'Apply (1 Connect)',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         ),
-        TextButton(onPressed: () {}, child: const Text("View All Jobs →")),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () {
+            // Navigate to full jobs list
+          },
+          child: const Text('View All Jobs →'),
+        ),
       ],
     );
   }
 
-  Widget _buildJobCard({
-    required String title,
-    required String budget,
-    required String posted,
-    required int match,
-  }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Chip(
-                  backgroundColor: Colors.green.shade100,
-                  label: Text(
-                    "$match% Match",
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              budget,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Posted $posted • 12 proposals",
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
+  String _timeAgo(dynamic timestamp) {
+    if (timestamp == null) return 'Just now';
+    final date = (timestamp as Timestamp).toDate();
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
+  String _formatDate(dynamic timestamp) {
+    return (timestamp as Timestamp).toDate().toLocal().toString().split(' ')[0];
+  }
+
+  Future<void> _applyToJob(
+    String jobId,
+    BuildContext context,
+    String uid,
+  ) async {
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+      final jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
+
+      // Get current connects
+      final userSnap = await userRef.get();
+      final connects = userSnap.data()?['connects'] ?? 0;
+
+      if (connects < 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Not enough connects! Buy more to apply.'),
+          ),
+        );
+        return;
+      }
+
+      // Transaction to apply and deduct connect
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final jobSnap = await transaction.get(jobRef);
+        final applicants = List<String>.from(
+          jobSnap.data()?['applicants'] ?? [],
+        );
+        if (applicants.contains(uid)) {
+          throw Exception('Already applied');
+        }
+
+        transaction.update(jobRef, {
+          'applicants': FieldValue.arrayUnion([uid]),
+        });
+        transaction.update(userRef, {'connects': FieldValue.increment(-1)});
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Applied successfully! (1 Connect deducted)'),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Apply failed: $e')));
+    }
   }
 }

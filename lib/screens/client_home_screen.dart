@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:skill_ghor/screens/client_edit_profile_screen.dart';
 import 'edit_profile_screen.dart';
+import 'post_job_screen.dart'; // Import for PostJobScreen
 
 class ClientHomeScreen extends StatelessWidget {
   const ClientHomeScreen({super.key});
@@ -195,10 +196,10 @@ class ClientHomeScreen extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Navigator to PostJobScreen (we'll build next)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Post Job Screen Coming Next!'),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const PostJobScreen(),
                         ),
                       );
                     },

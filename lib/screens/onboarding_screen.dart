@@ -224,6 +224,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     return null;
                   },
                   onSaved: (v) => _bio = v!.trim(),
+                  onChanged: (v) => setState(
+                    () => _bio = v,
+                  ), // Added this for real-time count
                 ),
                 const SizedBox(height: 8),
                 Text(

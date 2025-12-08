@@ -139,7 +139,7 @@ class HomeScreen extends StatelessWidget {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
                   child: role == 'freelancer'
-                      ? const FreelancerHomeScreen(key: ValueKey('freelancer'))
+                      ? FreelancerHomeScreen(key: ValueKey('freelancer'))
                       : role == 'client'
                       ? const ClientHomeScreen(key: ValueKey('client'))
                       : _buildRoleNotSelected(context),
