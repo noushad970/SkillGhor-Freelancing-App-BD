@@ -5,6 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import 'freelancer_edit_profile_screen.dart'; // Import the freelancer-specific edit screen
+import 'find_jobs_screen.dart'; // Find Work
+import 'my_proposals_screen.dart'; // Proposals
+import 'messages_screen.dart'; // Messages
+import 'profile_screen.dart'; // Profile
+import 'active_contracts_screen.dart'; // Active Contracts
+import 'earnings_reports_screen.dart'; // Earnings
 
 class FreelancerHomeScreen extends StatelessWidget {
   const FreelancerHomeScreen({super.key});
@@ -27,7 +33,15 @@ class FreelancerHomeScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {},
@@ -60,31 +74,76 @@ class FreelancerHomeScreen extends StatelessWidget {
               "Matched Jobs",
               Icons.auto_awesome,
               Colors.purple,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+                );
+              },
             ),
             _buildSectionCard(
               context,
               "Recent Jobs",
               Icons.work_outline,
               Colors.blue,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+                );
+              },
             ),
             _buildSectionCard(
               context,
               "Saved Jobs",
               Icons.bookmark_border,
               Colors.orange,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+                );
+              },
             ),
-            _buildSectionCard(context, "My Proposals", Icons.send, Colors.teal),
+            _buildSectionCard(
+              context,
+              "My Proposals",
+              Icons.send,
+              Colors.teal,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyProposalsScreen()),
+                );
+              },
+            ),
             _buildSectionCard(
               context,
               "Active Contracts",
               Icons.handshake_outlined,
               Colors.green,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ActiveContractsScreen(),
+                  ),
+                );
+              },
             ),
             _buildSectionCard(
               context,
               "Earnings & Reports",
               Icons.bar_chart,
               Colors.indigo,
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const EarningsReportsScreen(),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 20),
@@ -108,6 +167,29 @@ class FreelancerHomeScreen extends StatelessWidget {
           BottomNavigationBarItem(icon: Icon(Icons.message), label: 'Messages'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+        onTap: (index) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+            );
+          } else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyProposalsScreen()),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MessagesScreen()),
+            );
+          } else if (index == 4) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          }
+        },
       ),
     );
   }
@@ -329,27 +411,23 @@ class FreelancerHomeScreen extends StatelessWidget {
     String title,
     IconData icon,
     Color color,
+    Null Function() param4,
   ) {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Builder(
-        builder: (cardContext) => ListTile(
-          leading: CircleAvatar(
-            backgroundColor: color.withOpacity(0.2),
-            child: Icon(icon, color: color),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-          onTap: () {
-            ScaffoldMessenger.of(
-              cardContext,
-            ).showSnackBar(SnackBar(content: Text('$title clicked')));
-          },
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: color.withOpacity(0.2),
+          child: Icon(icon, color: color),
         ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('$title clicked')));
+        },
       ),
     );
   }
@@ -386,13 +464,7 @@ class FreelancerHomeScreen extends StatelessWidget {
                       const Icon(Icons.error, color: Colors.red, size: 48),
                       Text('Error loading jobs: ${snapshot.error}'),
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (_) => const FreelancerHomeScreen(),
-                            ),
-                          );
-                        }, // Refresh by rebuilding the screen
+                        onPressed: () {}, // Retry disabled in StatelessWidget
                         child: const Text('Retry'),
                       ),
                     ],
