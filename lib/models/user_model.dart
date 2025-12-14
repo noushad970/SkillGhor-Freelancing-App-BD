@@ -1,6 +1,3 @@
-// models/user_model.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class AppUser {
   final String uid;
   final String email;
@@ -14,6 +11,9 @@ class AppUser {
   final String? bio;
   final String? role;
   final bool onboarded;
+  final int totalEarnings;
+  final int totalConnects;
+  final int totalProposals;
 
   AppUser({
     required this.uid,
@@ -28,6 +28,9 @@ class AppUser {
     this.bio,
     this.role,
     required this.onboarded,
+    this.totalEarnings = 0,
+    this.totalConnects = 50, // Initial 50 on signup
+    this.totalProposals = 0,
   });
 
   factory AppUser.fromMap(Map<String, dynamic> map) {
@@ -46,6 +49,9 @@ class AppUser {
       bio: map['bio'],
       role: map['role'],
       onboarded: map['onboarded'] ?? false,
+      totalEarnings: map['totalEarnings'] ?? 0,
+      totalConnects: map['totalConnects'] ?? 50,
+      totalProposals: map['totalProposals'] ?? 0,
     );
   }
 
@@ -62,6 +68,8 @@ class AppUser {
     'bio': bio,
     'role': role,
     'onboarded': onboarded,
-    'createdAt': FieldValue.serverTimestamp(),
+    'totalEarnings': totalEarnings,
+    'totalConnects': totalConnects,
+    'totalProposals': totalProposals,
   };
 }

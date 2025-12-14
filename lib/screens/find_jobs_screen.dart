@@ -11,7 +11,7 @@ class FindJobsScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Find Jobs')),
+      appBar: AppBar(title: const Text('Find Jobs - SkillGhor')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('jobs')
@@ -36,8 +36,9 @@ class FindJobsScreen extends StatelessWidget {
           return ListView.builder(
             itemCount: jobs.length,
             itemBuilder: (context, index) {
-              final job = jobs[index].data() as Map<String, dynamic>;
-              final jobId = jobs[index].id;
+              final jobDoc = jobs[index];
+              final job = jobDoc.data() as Map<String, dynamic>;
+              final jobId = jobDoc.id;
               final applicants = List<String>.from(job['applicants'] ?? []);
               final isApplied = applicants.contains(user.uid);
 
@@ -76,6 +77,17 @@ class FindJobsScreen extends StatelessWidget {
                             : () async {
                                 await FirebaseFirestore.instance.runTransaction(
                                   (transaction) async {
+                                    final userSnap = await transaction.get(
+                                      FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(user.uid),
+                                    );
+                                    final connects =
+                                        userSnap.data()?['connects'] ?? 0;
+                                    if (connects < 1) {
+                                      throw 'Not enough connects';
+                                    }
+
                                     transaction.update(
                                       FirebaseFirestore.instance
                                           .collection('jobs')

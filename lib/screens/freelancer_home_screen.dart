@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import 'freelancer_edit_profile_screen.dart'; // Import the freelancer-specific edit screen
+import 'freelancer_edit_profile_screen.dart'; // Edit profile
 import 'find_jobs_screen.dart'; // Find Work
 import 'my_proposals_screen.dart'; // Proposals
 import 'messages_screen.dart'; // Messages
 import 'profile_screen.dart'; // Profile
 import 'active_contracts_screen.dart'; // Active Contracts
 import 'earnings_reports_screen.dart'; // Earnings
+import 'buy_connects_screen.dart'; // Buy Connects
 
 class FreelancerHomeScreen extends StatelessWidget {
   const FreelancerHomeScreen({super.key});
@@ -65,7 +66,7 @@ class FreelancerHomeScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             // Quick Stats
-            _buildStatsRow(),
+            _buildStatsRow(context),
             const SizedBox(height: 20),
 
             // Section Buttons
@@ -345,7 +346,7 @@ class FreelancerHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildStatsRow(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser!;
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -356,21 +357,46 @@ class FreelancerHomeScreen extends StatelessWidget {
         if (!snapshot.hasData) return const SizedBox();
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
-        final connects = data['connects'] ?? 20;
+        final connects = data['totalConnects'] ?? 20;
         final earnings = data['totalEarnings'] ?? 0;
-        final proposals = data['proposalsSent'] ?? 0;
+        final proposals = data['totalProposals'] ?? 0;
 
-        return Row(
+        return Column(
           children: [
-            _buildStatCard("Connects", connects.toString(), Icons.vpn_key),
-            const SizedBox(width: 12),
-            _buildStatCard("Proposals", proposals.toString(), Icons.send),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              "Earnings",
-              "৳${earnings.toStringAsFixed(0)}",
-              Icons.account_balance_wallet,
+            Row(
+              children: [
+                _buildStatCard(
+                  "totalConnects",
+                  connects.toString(),
+                  Icons.vpn_key,
+                ),
+                const SizedBox(width: 12),
+                _buildStatCard(
+                  "totalProposals",
+                  proposals.toString(),
+                  Icons.send,
+                ),
+                const SizedBox(width: 12),
+                _buildStatCard(
+                  "totalEarnings",
+                  "৳${earnings.toStringAsFixed(0)}",
+                  Icons.account_balance_wallet,
+                ),
+              ],
             ),
+            const SizedBox(height: 16),
+            if (connects < 10) // Show buy button if low on connects
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BuyConnectsScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Buy More Connects'),
+              ),
           ],
         );
       },
@@ -407,11 +433,11 @@ class FreelancerHomeScreen extends StatelessWidget {
   }
 
   Widget _buildSectionCard(
-    BuildContext context,
+    BuildContext parentContext,
     String title,
     IconData icon,
     Color color,
-    Null Function() param4,
+    VoidCallback onTap,
   ) {
     return Card(
       elevation: 2,
@@ -423,11 +449,7 @@ class FreelancerHomeScreen extends StatelessWidget {
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('$title clicked')));
-        },
+        onTap: onTap,
       ),
     );
   }
@@ -464,7 +486,11 @@ class FreelancerHomeScreen extends StatelessWidget {
                       const Icon(Icons.error, color: Colors.red, size: 48),
                       Text('Error loading jobs: ${snapshot.error}'),
                       ElevatedButton(
-                        onPressed: () {}, // Retry disabled in StatelessWidget
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Retrying...')),
+                          );
+                        }, // StreamBuilder auto-updates; no manual refresh needed
                         child: const Text('Retry'),
                       ),
                     ],
@@ -640,7 +666,10 @@ class FreelancerHomeScreen extends StatelessWidget {
         const SizedBox(height: 12),
         TextButton(
           onPressed: () {
-            // Navigate to full jobs list
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+            );
           },
           child: const Text('View All Jobs →'),
         ),
@@ -672,7 +701,7 @@ class FreelancerHomeScreen extends StatelessWidget {
 
       // Get current connects
       final userSnap = await userRef.get();
-      final connects = userSnap.data()?['connects'] ?? 0;
+      final connects = userSnap.data()?['totalConnects'] ?? 0;
 
       if (connects < 1) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -696,7 +725,9 @@ class FreelancerHomeScreen extends StatelessWidget {
         transaction.update(jobRef, {
           'applicants': FieldValue.arrayUnion([uid]),
         });
-        transaction.update(userRef, {'connects': FieldValue.increment(-1)});
+        transaction.update(userRef, {
+          'totalConnects': FieldValue.increment(-1),
+        });
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

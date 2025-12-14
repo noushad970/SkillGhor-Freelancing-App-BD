@@ -330,6 +330,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   'companyName': _companyName,
                                 },
                                 'onboarded': true,
+                                'totalEarnings': 0,
+                                'totalConnects': 50,
+                                'totalProposals': 0,
                               },
                             );
 
