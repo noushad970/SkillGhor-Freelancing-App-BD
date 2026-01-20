@@ -25,14 +25,6 @@ class FreelancerHomeScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
-        title: const Text(
-          'SkillGhor',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.green,
-            fontSize: 22,
-          ),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -209,8 +201,32 @@ class FreelancerHomeScreen extends StatelessWidget {
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'User';
-        final completion = data['profileCompletion'] ?? 0;
-        final connects = data['connects'] ?? 20;
+        // Dynamically compute profile completion by counting filled fields
+        int totalFields = 0;
+        int filledFields = 0;
+
+        bool _hasString(String? s) => (s != null && s.trim().isNotEmpty);
+        bool _hasList(List<dynamic>? l) => (l != null && l.isNotEmpty);
+        bool _hasNum(num? n) => (n != null && n > 0);
+
+        final checks = <bool?>[
+          _hasString(data['name'] as String?),
+          _hasString(data['photoUrl'] as String?),
+          _hasList(data['skills'] as List<dynamic>?),
+          _hasString(data['bio'] as String?),
+          _hasNum(data['hourly_rate'] as num?),
+          _hasString(data['location'] as String?),
+          _hasList(data['education'] as List<dynamic>?),
+          _hasList(data['portfolioUrls'] as List<dynamic>?),
+          (data['isVerified'] == true),
+        ];
+
+        totalFields = checks.length;
+        filledFields = checks.where((c) => c == true).length;
+        final completion =
+            ((filledFields / (totalFields == 0 ? 1 : totalFields)) * 100)
+                .round();
+
         final isVerified = data['isVerified'] == true;
 
         return Card(
@@ -261,13 +277,7 @@ class FreelancerHomeScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          Text(
-                            'Available Connects: $connects',
-                            style: TextStyle(
-                              color: Colors.green.shade700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+
                           const SizedBox(height: 8),
                           Row(
                             children: [

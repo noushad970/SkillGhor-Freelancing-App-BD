@@ -61,6 +61,10 @@ class AuthService extends ChangeNotifier {
           'role': null,
           'onboarded': false,
           'createdAt': FieldValue.serverTimestamp(),
+          'isVerified': false,
+          'totalConnects': 20,
+          'totalEarnings': 0,
+          'totalProposals': 0,
         };
         await docRef.set(initialData);
       }

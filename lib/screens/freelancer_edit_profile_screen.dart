@@ -111,7 +111,6 @@ class _FreelancerEditProfileScreenState
 
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'name': fullName,
-        'username': username,
         'country': country,
         'bio': bio,
         'skills': skills,
@@ -172,12 +171,15 @@ class _FreelancerEditProfileScreenState
               ),
               const SizedBox(height: 16),
 
-              // Username
+              // Username (read-only after signup)
               TextFormField(
                 initialValue: username,
-                decoration: const InputDecoration(labelText: 'Username *'),
-                validator: (v) => v!.trim().length < 4 ? 'Min 4 chars' : null,
-                onChanged: (v) => username = v.trim().toLowerCase(),
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  helperText:
+                      'Username is set during signup and cannot be changed',
+                ),
               ),
               const SizedBox(height: 16),
 
