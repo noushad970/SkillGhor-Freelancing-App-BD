@@ -2,9 +2,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:skill_ghor/screens/client_edit_profile_screen.dart';
-import 'edit_profile_screen.dart';
+import 'client_edit_profile_screen.dart';
 import 'post_job_screen.dart';
+import 'applicant_list_screen.dart'; // New: Applicant list with proposals
+import 'messages_screen.dart';
 
 class ClientHomeScreen extends StatelessWidget {
   const ClientHomeScreen({super.key});
@@ -15,6 +16,8 @@ class ClientHomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
+
+      // TOP HEADER with Workable Notification Icon
       appBar: AppBar(
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
@@ -24,9 +27,60 @@ class ClientHomeScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('jobs')
+                .where('clientId', isEqualTo: user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              int unreadCount = 0;
+              if (snapshot.hasData) {
+                for (final job in snapshot.data!.docs) {
+                  unreadCount += (job['totalProposals'] ?? 0) as int;
+                }
+              }
+
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ApplicantListScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 11,
+                      top: 11,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           CircleAvatar(
             backgroundImage: user.photoURL != null
@@ -48,30 +102,23 @@ class ClientHomeScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final data = (snapshot.data!.data() as Map<String, dynamic>? ?? {});
+          final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
           final name = data['name'] ?? user.displayName ?? 'Client';
           final company = data['companyName'] ?? 'Your Company';
-          // Compute robust completion: prefer stored value if present, else derive
-          final storedCompletion = (data['profileCompletion'] as num?)?.toInt();
-          int derivedCompletion = 0;
-          int totalChecks = 6;
-          int checks = 0;
-          if ((name as String).trim().isNotEmpty) checks++;
-          if ((company as String).trim().isNotEmpty) checks++;
-          if ((user.photoURL ?? '').toString().isNotEmpty) checks++;
-          if ((data['companyDescription'] as String?)?.trim().isNotEmpty ==
-              true)
-            checks++;
-          if ((data['location'] as String?)?.trim().isNotEmpty == true)
-            checks++;
-          if (data['isVerified'] == true) checks++;
-          derivedCompletion = ((checks / totalChecks) * 100).round();
-          final completion = ((storedCompletion ?? derivedCompletion)).clamp(
-            0,
-            100,
-          );
-          final totalSpent = (data['totalSpent'] as num?) ?? 0;
+          final completion = data['profileCompletion'] ?? 0;
+          final totalSpent = data['totalSpent'] ?? 0;
           final isVerified = data['isVerified'] == true;
+
+          // Dynamic Profile Completion for Client
+          int completed = 0;
+          if ((data['name'] as String?)?.isNotEmpty ?? false) completed++;
+          if ((data['username'] as String?)?.isNotEmpty ?? false) completed++;
+          if (data['country'] != null) completed++;
+          if ((data['companyName'] as String?)?.isNotEmpty ?? false)
+            completed++;
+          if ((data['bio'] as String?)!.length >= 100 ?? false) completed++;
+
+          final profileCompletion = (completed / 5 * 100).round();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -137,10 +184,10 @@ class ClientHomeScreen extends StatelessWidget {
                                     children: [
                                       Expanded(
                                         child: LinearProgressIndicator(
-                                          value: completion / 100,
+                                          value: profileCompletion / 100,
                                           backgroundColor: Colors.grey[300],
                                           valueColor: AlwaysStoppedAnimation(
-                                            completion >= 90
+                                            profileCompletion >= 90
                                                 ? Colors.green
                                                 : Colors.orange,
                                           ),
@@ -148,7 +195,7 @@ class ClientHomeScreen extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '$completion% Complete',
+                                        "$profileCompletion% Complete",
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -184,7 +231,7 @@ class ClientHomeScreen extends StatelessWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        'ID Verification coming soon! Stay tuned.',
+                                        'ID Verification coming soon!',
                                       ),
                                     ),
                                   );
@@ -237,48 +284,57 @@ class ClientHomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // STATS ROW (no connects shown here in client screen)
+                // STATS ROW (No Connects for Client)
                 Row(
                   children: [
                     _buildStatCard(
-                      'Total Spent',
-                      '৳${totalSpent.toStringAsFixed(0)}',
+                      "Total Spent",
+                      "৳${(data['totalSpent'] ?? 0).toStringAsFixed(0)}",
                       Icons.paid,
                     ),
                     const SizedBox(width: 12),
-                    _buildStatCard('Active Jobs', '3', Icons.work),
+                    _buildStatCard(
+                      "Active Jobs",
+                      (data['activeJobs'] ?? 0).toString(),
+                      Icons.work,
+                    ),
                     const SizedBox(width: 12),
-                    _buildStatCard('Hired', '12', Icons.people),
+                    _buildStatCard(
+                      "Hired",
+                      (data['hiredFreelancers'] ?? 0).toString(),
+                      Icons.people,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
+                // QUICK ACTIONS
                 const Text(
-                  'Quick Actions',
+                  "Quick Actions",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 _buildActionTile(
                   context,
-                  'My Jobs',
+                  "My Jobs",
                   Icons.folder_open,
                   Colors.blue,
                 ),
                 _buildActionTile(
                   context,
-                  'Hired Freelancers',
+                  "Hired Freelancers",
                   Icons.person_search,
                   Colors.purple,
                 ),
                 _buildActionTile(
                   context,
-                  'Invoices & Payments',
+                  "Invoices & Payments",
                   Icons.receipt_long,
                   Colors.orange,
                 ),
                 _buildActionTile(
                   context,
-                  'Messages',
+                  "Messages",
                   Icons.message,
                   Colors.green,
                 ),
@@ -288,6 +344,7 @@ class ClientHomeScreen extends StatelessWidget {
         },
       ),
 
+      // BOTTOM NAVIGATION
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green.shade600,
@@ -351,6 +408,13 @@ class ClientHomeScreen extends StatelessWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () {
+          if (title == 'Messages') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MessagesScreen()),
+            );
+            return;
+          }
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('$title clicked')));

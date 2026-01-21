@@ -12,6 +12,7 @@ import 'profile_screen.dart'; // Profile
 import 'active_contracts_screen.dart'; // Active Contracts
 import 'earnings_reports_screen.dart'; // Earnings
 import 'buy_connects_screen.dart'; // Buy Connects
+import 'apply_job_screen.dart';
 
 class FreelancerHomeScreen extends StatelessWidget {
   const FreelancerHomeScreen({super.key});
@@ -201,31 +202,8 @@ class FreelancerHomeScreen extends StatelessWidget {
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'User';
-        // Dynamically compute profile completion by counting filled fields
-        int totalFields = 0;
-        int filledFields = 0;
 
-        bool _hasString(String? s) => (s != null && s.trim().isNotEmpty);
-        bool _hasList(List<dynamic>? l) => (l != null && l.isNotEmpty);
-        bool _hasNum(num? n) => (n != null && n > 0);
-
-        final checks = <bool?>[
-          _hasString(data['name'] as String?),
-          _hasString(data['photoUrl'] as String?),
-          _hasList(data['skills'] as List<dynamic>?),
-          _hasString(data['bio'] as String?),
-          _hasNum(data['hourly_rate'] as num?),
-          _hasString(data['location'] as String?),
-          _hasList(data['education'] as List<dynamic>?),
-          _hasList(data['portfolioUrls'] as List<dynamic>?),
-          (data['isVerified'] == true),
-        ];
-
-        totalFields = checks.length;
-        filledFields = checks.where((c) => c == true).length;
-        final completion =
-            ((filledFields / (totalFields == 0 ? 1 : totalFields)) * 100)
-                .round();
+        final completion = data['profileCompletion'] ?? 0;
 
         final isVerified = data['isVerified'] == true;
 
@@ -659,9 +637,17 @@ class FreelancerHomeScreen extends StatelessWidget {
                             ),
                             onPressed: isApplied
                                 ? null
-                                : () => _applyToJob(jobId, context, user.uid),
+                                : () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ApplyJobScreen(jobId: jobId),
+                                      ),
+                                    );
+                                  },
                             child: Text(
-                              isApplied ? 'Applied' : 'Apply (1 Connect)',
+                              isApplied ? 'Applied' : 'Apply (1+ Connects)',
                             ),
                           ),
                         ),
@@ -698,58 +684,5 @@ class FreelancerHomeScreen extends StatelessWidget {
 
   String _formatDate(dynamic timestamp) {
     return (timestamp as Timestamp).toDate().toLocal().toString().split(' ')[0];
-  }
-
-  Future<void> _applyToJob(
-    String jobId,
-    BuildContext context,
-    String uid,
-  ) async {
-    try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-      final jobRef = FirebaseFirestore.instance.collection('jobs').doc(jobId);
-
-      // Get current connects
-      final userSnap = await userRef.get();
-      final connects = userSnap.data()?['totalConnects'] ?? 0;
-
-      if (connects < 1) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Not enough connects! Buy more to apply.'),
-          ),
-        );
-        return;
-      }
-
-      // Transaction to apply and deduct connect
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final jobSnap = await transaction.get(jobRef);
-        final applicants = List<String>.from(
-          jobSnap.data()?['applicants'] ?? [],
-        );
-        if (applicants.contains(uid)) {
-          throw Exception('Already applied');
-        }
-
-        transaction.update(jobRef, {
-          'applicants': FieldValue.arrayUnion([uid]),
-        });
-        transaction.update(userRef, {
-          'totalConnects': FieldValue.increment(-1),
-        });
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Applied successfully! (1 Connect deducted)'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Apply failed: $e')));
-    }
   }
 }

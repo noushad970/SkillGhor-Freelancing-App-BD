@@ -58,18 +58,31 @@ class AuthService extends ChangeNotifier {
           'email': firebaseUser.email,
           'name': firebaseUser.displayName ?? '',
           'photoUrl': firebaseUser.photoURL,
+          'username': (firebaseUser.displayName ?? '').toLowerCase().replaceAll(
+            ' ',
+            '',
+          ),
           'role': null,
           'onboarded': false,
           'createdAt': FieldValue.serverTimestamp(),
+          // verification & counters
           'isVerified': false,
           'totalConnects': 20,
           'totalEarnings': 0,
           'totalProposals': 0,
+          'totalSpent': 0,
+          // profile fields
+          'bio': '',
+          'skills': <String>[],
+          'hourly_rate': 0,
+          'location': '',
+          'education': <Map<String, dynamic>>[],
+          'portfolioUrls': <String>[],
         };
         await docRef.set(initialData);
       }
 
-      final data = snapshot.data() as Map<String, dynamic>? ?? {};
+      final data = snapshot.data() ?? <String, dynamic>{};
       final appUser = AppUser.fromMap({
         ...data,
         'uid': firebaseUser.uid,
@@ -104,11 +117,9 @@ class AuthService extends ChangeNotifier {
         await _auth.signInWithPopup(provider);
       } else {
         final googleUser = await _googleSignIn.authenticate();
-        if (googleUser == null) return;
-
+        // authenticate() returns non-null in this plugin version
         final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.idToken,
           idToken: googleAuth.idToken,
         );
         await _auth.signInWithCredential(credential);
