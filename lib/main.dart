@@ -8,7 +8,6 @@ import 'screens/sign_in_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/freelancer_home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

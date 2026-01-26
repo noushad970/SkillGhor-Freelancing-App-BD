@@ -135,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
               // Country
               DropdownButtonFormField<String>(
-                value: country,
+                initialValue: country,
                 decoration: const InputDecoration(labelText: 'Country *'),
                 items: _countries
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))

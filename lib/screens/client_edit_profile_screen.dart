@@ -127,7 +127,7 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: country,
+                initialValue: country,
                 decoration: const InputDecoration(labelText: 'Country *'),
                 items: ['Bangladesh', 'India', 'USA', 'UK', 'Other']
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))

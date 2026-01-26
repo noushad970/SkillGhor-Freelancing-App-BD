@@ -316,8 +316,9 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
                             keyboardType: TextInputType.number,
                             validator: (v) {
                               if (v!.trim().isEmpty) return 'Required';
-                              if (double.tryParse(v) == null)
+                              if (double.tryParse(v) == null) {
                                 return 'Valid number only';
+                              }
                               return null;
                             },
                           ),

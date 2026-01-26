@@ -118,7 +118,7 @@ class AuthService extends ChangeNotifier {
       } else {
         final googleUser = await _googleSignIn.authenticate();
         // authenticate() returns non-null in this plugin version
-        final googleAuth = await googleUser.authentication;
+        final googleAuth = googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
           idToken: googleAuth.idToken,
         );

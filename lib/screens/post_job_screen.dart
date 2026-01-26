@@ -109,7 +109,7 @@ class _PostJobScreenState extends State<PostJobScreen> {
 
               // Budget Type
               DropdownButtonFormField<String>(
-                value: budgetType,
+                initialValue: budgetType,
                 decoration: const InputDecoration(labelText: 'Budget Type *'),
                 items: ['Fixed', 'Hourly']
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))

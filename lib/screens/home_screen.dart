@@ -6,8 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:skill_ghor/screens/client_home_screen.dart';
 import 'package:skill_ghor/screens/freelancer_home_screen.dart';
 import '../services/auth_service.dart';
-import 'freelancer_dashboard.dart';
-import 'client_dashboard.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

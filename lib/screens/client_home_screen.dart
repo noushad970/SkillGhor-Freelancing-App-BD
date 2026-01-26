@@ -114,8 +114,9 @@ class ClientHomeScreen extends StatelessWidget {
           if ((data['name'] as String?)?.isNotEmpty ?? false) completed++;
           if ((data['username'] as String?)?.isNotEmpty ?? false) completed++;
           if (data['country'] != null) completed++;
-          if ((data['companyName'] as String?)?.isNotEmpty ?? false)
+          if ((data['companyName'] as String?)?.isNotEmpty ?? false) {
             completed++;
+          }
           if ((data['bio'] as String?)!.length >= 100 ?? false) completed++;
 
           final profileCompletion = (completed / 5 * 100).round();

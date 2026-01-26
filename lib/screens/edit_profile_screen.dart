@@ -173,7 +173,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
-                      value: country,
+                      initialValue: country,
                       decoration: const InputDecoration(labelText: 'Country *'),
                       items:
                           [

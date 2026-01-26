@@ -2,8 +2,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
 import 'freelancer_edit_profile_screen.dart'; // Edit profile
 import 'find_jobs_screen.dart'; // Find Work
 import 'my_proposals_screen.dart'; // Proposals
@@ -62,83 +60,8 @@ class FreelancerHomeScreen extends StatelessWidget {
             _buildStatsRow(context),
             const SizedBox(height: 20),
 
-            // Section Buttons
-            _buildSectionCard(
-              context,
-              "Matched Jobs",
-              Icons.auto_awesome,
-              Colors.purple,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
-                );
-              },
-            ),
-            _buildSectionCard(
-              context,
-              "Recent Jobs",
-              Icons.work_outline,
-              Colors.blue,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
-                );
-              },
-            ),
-            _buildSectionCard(
-              context,
-              "Saved Jobs",
-              Icons.bookmark_border,
-              Colors.orange,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const FindJobsScreen()),
-                );
-              },
-            ),
-            _buildSectionCard(
-              context,
-              "My Proposals",
-              Icons.send,
-              Colors.teal,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MyProposalsScreen()),
-                );
-              },
-            ),
-            _buildSectionCard(
-              context,
-              "Active Contracts",
-              Icons.handshake_outlined,
-              Colors.green,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ActiveContractsScreen(),
-                  ),
-                );
-              },
-            ),
-            _buildSectionCard(
-              context,
-              "Earnings & Reports",
-              Icons.bar_chart,
-              Colors.indigo,
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const EarningsReportsScreen(),
-                  ),
-                );
-              },
-            ),
+            // Quick Actions (side-by-side, wrap to multiple lines)
+            _buildQuickActions(context),
 
             const SizedBox(height: 20),
 
@@ -439,6 +362,102 @@ class FreelancerHomeScreen extends StatelessWidget {
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
       ),
+    );
+  }
+
+  // New: quick actions as side-by-side buttons that wrap into multiple rows
+  Widget _buildQuickActions(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _actionButton(
+          label: 'Matched Jobs',
+          icon: Icons.auto_awesome,
+          color: Colors.purple,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+            );
+          },
+        ),
+        _actionButton(
+          label: 'Recent Jobs',
+          icon: Icons.work_outline,
+          color: Colors.blue,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+            );
+          },
+        ),
+        _actionButton(
+          label: 'Saved Jobs',
+          icon: Icons.bookmark_border,
+          color: Colors.orange,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const FindJobsScreen()),
+            );
+          },
+        ),
+        _actionButton(
+          label: 'My Proposals',
+          icon: Icons.send,
+          color: Colors.teal,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyProposalsScreen()),
+            );
+          },
+        ),
+        _actionButton(
+          label: 'Active Contracts',
+          icon: Icons.handshake_outlined,
+          color: Colors.green,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ActiveContractsScreen()),
+            );
+          },
+        ),
+        _actionButton(
+          label: 'Earnings & Reports',
+          icon: Icons.bar_chart,
+          color: Colors.indigo,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const EarningsReportsScreen()),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _actionButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withOpacity(0.12),
+        foregroundColor: color,
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
     );
   }
 

@@ -104,8 +104,9 @@ class _FreelancerEditProfileScreenState
       if (bio.length >= 100) completedFields += 2;
       if (languages.isNotEmpty) completedFields++;
       if (education.isNotEmpty) completedFields++;
-      if (portfolioGithub.isNotEmpty || portfolioWebsite.isNotEmpty)
+      if (portfolioGithub.isNotEmpty || portfolioWebsite.isNotEmpty) {
         completedFields++;
+      }
 
       final completionPercent = (completedFields / totalFields * 100).round();
 
@@ -185,7 +186,7 @@ class _FreelancerEditProfileScreenState
 
               // Country
               DropdownButtonFormField<String>(
-                value: country,
+                initialValue: country,
                 decoration: const InputDecoration(labelText: 'Country *'),
                 items: _countries
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
