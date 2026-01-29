@@ -473,10 +473,20 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> _launch(String urlStr) async {
-    final uri = Uri.tryParse(urlStr.trim());
+    String url = urlStr.trim();
+    
+    // Add scheme if not present
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+    
+    final uri = Uri.tryParse(url);
     if (uri == null) return;
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      // swallow failures silently to avoid crash; consider a snackbar if desired
+    
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      // Handle error silently
     }
   }
 }
