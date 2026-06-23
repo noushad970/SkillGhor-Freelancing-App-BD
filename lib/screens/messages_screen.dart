@@ -38,7 +38,7 @@ class MessagesScreen extends StatelessWidget {
                 }
                 return ListView.separated(
                   itemCount: rooms.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final r = rooms[index].data() as Map<String, dynamic>;
                     final peerId = r['peerId'] as String? ?? '';

@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'chat_room_screen.dart';
 
+// Timestamp for contract creation timestamp
+
 class ApplicantListScreen extends StatelessWidget {
   const ApplicantListScreen({super.key});
 
@@ -78,7 +80,7 @@ class ApplicantListScreen extends StatelessWidget {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: props.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, i) {
                             final p = props[i];
                             final data = p.data() as Map<String, dynamic>;
@@ -146,14 +148,37 @@ class ApplicantListScreen extends StatelessWidget {
                                       ElevatedButton(
                                         onPressed: () async {
                                           try {
+                                            // Update proposal status to approved
                                             await p.reference.update({
                                               'status': 'approved',
                                             });
+
+                                            // Create contract document
+                                            await FirebaseFirestore.instance
+                                                .collection('contracts')
+                                                .add({
+                                                  'clientId': user.uid,
+                                                  'freelancerId': freelancerUid,
+                                                  'jobId': jobId,
+                                                  'jobTitle': title,
+                                                  'status': 'active',
+                                                  'createdAt': Timestamp.now(),
+                                                  'updatedAt': Timestamp.now(),
+                                                });
+
+                                            // Update job to mark as having active contract
+                                            await FirebaseFirestore.instance
+                                                .collection('jobs')
+                                                .doc(jobId)
+                                                .update({'status': 'ongoing'});
+
                                             ScaffoldMessenger.of(
                                               context,
                                             ).showSnackBar(
                                               const SnackBar(
-                                                content: Text('Approved'),
+                                                content: Text(
+                                                  'Freelancer approved! Contract created.',
+                                                ),
                                               ),
                                             );
                                           } catch (e) {
