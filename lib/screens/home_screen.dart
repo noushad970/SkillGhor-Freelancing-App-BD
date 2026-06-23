@@ -25,8 +25,8 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',
-            onPressed: () async {
-              await authService.signOut();
+            onPressed: () {
+              _showSignOutDialog(context, authService);
             },
           ),
         ],
@@ -170,6 +170,44 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showSignOutDialog(BuildContext context, AuthService authService) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Sign Out'),
+          content: const Text('Are you sure you want to sign out?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await authService.signOut();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Sign out failed: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text(
+                'Sign Out',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

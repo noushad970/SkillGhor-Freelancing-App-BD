@@ -150,8 +150,18 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (e) {
+      debugPrint('Google Sign-Out Error: $e');
+    }
+    
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('Firebase Sign-Out Error: $e');
+      rethrow;
+    }
   }
 
   @override

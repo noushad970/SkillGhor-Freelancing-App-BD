@@ -39,10 +39,7 @@ class FreelancerHomeScreen extends StatelessWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {},
           ),
-          CircleAvatar(
-            backgroundColor: Colors.green.shade100,
-            child: const Icon(Icons.person, color: Colors.green),
-          ),
+          
           const SizedBox(width: 12),
         ],
       ),
