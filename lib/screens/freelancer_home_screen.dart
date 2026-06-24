@@ -310,33 +310,6 @@ class FreelancerHomeScreen extends StatelessWidget {
                       spacing: 8,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        if (!isVerified)
-                          SizedBox(
-                            height: 36,
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'ID Verification with NID/Passport coming soon!',
-                                    ),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.badge_outlined, size: 16),
-                              label: const Text('Verify ID'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.orange,
-                                side: BorderSide(color: Colors.orange.shade300),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                ),
-                                minimumSize: const Size(0, 36),
-                              ),
-                            ),
-                          ),
-
                         SizedBox(
                           height: 36,
                           child: OutlinedButton.icon(
