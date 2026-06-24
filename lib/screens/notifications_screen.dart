@@ -1,5 +1,8 @@
 // lib/screens/notifications_screen.dart
 import 'package:flutter/material.dart';
+import 'job_details_screen.dart';
+import 'messages_screen.dart';
+import 'wallet_screen.dart';
 import '../services/notification_service.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -18,11 +21,34 @@ class NotificationsScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all),
-            onPressed: () {
-              notificationService.markAllAsRead();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All marked as read')),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Mark all as read?'),
+                  content: const Text(
+                    'This will mark all your notifications as read.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Confirm'),
+                    ),
+                  ],
+                ),
               );
+              if (confirm == true) {
+                await notificationService.markAllAsRead();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('All marked as read')),
+                  );
+                }
+              }
             },
           ),
         ],
@@ -61,25 +87,51 @@ class NotificationsScreen extends StatelessWidget {
 
           return ListView.separated(
             itemCount: notifications.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final notif = notifications[index];
               return NotificationTile(
                 notification: notif,
-                onTap: () {
-                  notificationService.markAsRead(notif.id);
+                onTap: () async {
+                  await notificationService.markAsRead(notif.id);
                   // Navigate based on actionUrl
                   if (notif.actionUrl != null) {
-                    // Handle navigation
+                    final url = notif.actionUrl!;
+                    if (url.startsWith('/job/')) {
+                      final jobId = url.split('/job/').last;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              JobDetailsScreen(jobId: jobId, isClient: false),
+                        ),
+                      );
+                      return;
+                    }
+                    if (url.startsWith('/messages')) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MessagesScreen(),
+                        ),
+                      );
+                      return;
+                    }
+                    if (url.startsWith('/wallet')) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WalletScreen()),
+                      );
+                      return;
+                    }
+                    // unknown route
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Navigating to ${notif.actionUrl}'),
-                      ),
+                      SnackBar(content: Text('Action: ${notif.actionUrl}')),
                     );
                   }
                 },
-                onDismiss: () {
-                  notificationService.deleteNotification(notif.id);
+                onDismiss: () async {
+                  await notificationService.deleteNotification(notif.id);
                 },
               );
             },

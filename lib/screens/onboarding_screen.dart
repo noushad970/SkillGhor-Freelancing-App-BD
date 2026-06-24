@@ -343,6 +343,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 backgroundColor: Colors.green,
                               ),
                             );
+
+                            // Navigate to role home
+                            if (widget.role == 'freelancer') {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/freelancer',
+                              );
+                            } else {
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/client',
+                              );
+                            }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Error: $e')),

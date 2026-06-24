@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'chat_room_screen.dart';
+import 'advanced_chat_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key});
@@ -63,7 +63,7 @@ class MessagesScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ChatRoomScreen(
+                            builder: (_) => AdvancedChatScreen(
                               otherUserId: peerId,
                               otherUserName: peerName,
                               jobId: jobId,

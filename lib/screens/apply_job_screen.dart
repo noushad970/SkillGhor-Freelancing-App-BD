@@ -81,6 +81,19 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
+
+      // Prevent applying to your own job
+      if (_jobData != null && _jobData!['clientId'] == user.uid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You cannot apply to your own job'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() => _isSubmitting = false);
+        return;
+      }
+
       final userRef = FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid);
@@ -98,6 +111,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
             backgroundColor: Colors.orange,
           ),
         );
+        setState(() => _isSubmitting = false);
         return;
       }
 
@@ -114,15 +128,28 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
             backgroundColor: Colors.red,
           ),
         );
+        setState(() => _isSubmitting = false);
         return;
       }
+
+      // Parse estimated date into Timestamp if possible
+      final estimatedInput = _estimatedDateCtrl.text.trim();
+      DateTime? parsedDate;
+      if (estimatedInput.isNotEmpty) {
+        parsedDate = DateTime.tryParse(estimatedInput);
+      }
+      final estimatedValue = parsedDate != null
+          ? Timestamp.fromDate(parsedDate)
+          : estimatedInput;
 
       // Transaction
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final freshUser = await transaction.get(userRef);
         final freshConnects =
             (freshUser.data()?['totalConnects'] as num?)?.toInt() ?? 0;
-        if (freshConnects < totalToDeduct) throw 'Insufficient connects';
+        if (freshConnects < totalToDeduct) {
+          throw Exception('Insufficient connects');
+        }
 
         transaction.update(userRef, {
           'totalConnects': FieldValue.increment(-totalToDeduct),
@@ -134,7 +161,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
           'freelancerName': userSnap.data()?['name'] ?? 'Unknown',
           'freelancerPhotoUrl': userSnap.data()?['photoUrl'],
           'description': _descriptionCtrl.text.trim(),
-          'estimatedDate': _estimatedDateCtrl.text.trim(),
+          'estimatedDate': estimatedValue,
           'portfolio': _portfolioCtrl.text.trim(),
           'budget': double.tryParse(_budgetCtrl.text.trim()) ?? 0.0,
           'boostConnects': _boostConnects,
@@ -161,7 +188,7 @@ class _ApplyJobScreenState extends State<ApplyJobScreen>
         SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 

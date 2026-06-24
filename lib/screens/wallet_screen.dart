@@ -144,7 +144,7 @@ class WalletScreen extends StatelessWidget {
 
                               return ListView.separated(
                                 itemCount: transactions.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final txn = transactions[index];
@@ -210,7 +210,7 @@ class WalletScreen extends StatelessWidget {
 
                               return ListView.separated(
                                 itemCount: withdrawals.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final withdrawal = withdrawals[index];

@@ -241,6 +241,11 @@ class PaymentService {
         );
   }
 
+  /// Convenience stream for UI
+  Stream<List<Payment>> getPaymentHistoryStream() {
+    return getPaymentHistory();
+  }
+
   /// Get withdrawal history
   Stream<List<Map<String, dynamic>>> getWithdrawalHistory({int limit = 50}) {
     final uid = _auth.currentUser?.uid;

@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'chat_room_screen.dart';
+import 'advanced_chat_screen.dart';
 
 class HiredFreelancersScreen extends StatelessWidget {
   const HiredFreelancersScreen({super.key});
@@ -50,7 +50,7 @@ class HiredFreelancersScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: contracts.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, idx) {
               final c = contracts[idx];
               final cData = c.data() as Map<String, dynamic>;
@@ -139,7 +139,7 @@ class HiredFreelancersScreen extends StatelessWidget {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => ChatRoomScreen(
+                                        builder: (_) => AdvancedChatScreen(
                                           otherUserId: freelancerId,
                                           otherUserName: name,
                                           jobId: jobId,

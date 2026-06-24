@@ -9,6 +9,8 @@ import 'messages_screen.dart';
 import 'my_jobs_screen.dart';
 import 'hired_freelancers_screen.dart';
 import 'client_profile_screen.dart';
+import 'invoices_payments_screen.dart';
+import 'onboarding_screen.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -277,6 +279,19 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                 foregroundColor: Colors.orange,
                               ),
                             ),
+
+                          // Onboarding quick button
+                          TextButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const OnboardingScreen(role: 'client'),
+                              ),
+                            ),
+                            icon: const Icon(Icons.info_outline),
+                            label: const Text('Onboarding'),
+                          ),
                         ],
                       ),
                     ],
@@ -355,9 +370,12 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 'Invoices & Payments',
                 Icons.receipt_long,
                 Colors.orange,
-                () => ScaffoldMessenger.of(
+                () => Navigator.push(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('Coming soon!'))),
+                  MaterialPageRoute(
+                    builder: (_) => const InvoicesPaymentsScreen(),
+                  ),
+                ),
               ),
               _buildActionTile(
                 context,

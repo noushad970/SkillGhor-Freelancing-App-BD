@@ -39,7 +39,7 @@ class FreelancerHomeScreen extends StatelessWidget {
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {},
           ),
-          
+
           const SizedBox(width: 12),
         ],
       ),
@@ -253,25 +253,64 @@ class FreelancerHomeScreen extends StatelessWidget {
                         foregroundColor: Colors.white,
                       ),
                     ),
-                    if (!isVerified)
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'ID Verification with NID/Passport coming soon!',
+
+                    // Right side buttons: will wrap on small screens
+                    Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (!isVerified)
+                          SizedBox(
+                            height: 36,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'ID Verification with NID/Passport coming soon!',
+                                    ),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.badge_outlined, size: 16),
+                              label: const Text('Verify ID'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: BorderSide(color: Colors.orange.shade300),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                minimumSize: const Size(0, 36),
                               ),
-                              backgroundColor: Colors.orange,
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.badge_outlined, size: 18),
-                        label: const Text('Verify ID'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                          side: BorderSide(color: Colors.orange.shade300),
+                          ),
+
+                        SizedBox(
+                          height: 36,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const BuyConnectsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.shopping_cart, size: 16),
+                            label: const Text('Buy Connects'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green,
+                              side: BorderSide(color: Colors.green.shade300),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              minimumSize: const Size(0, 36),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -364,28 +403,6 @@ class FreelancerHomeScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard(
-    BuildContext parentContext,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color.withOpacity(0.2),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: onTap,
       ),
     );
   }

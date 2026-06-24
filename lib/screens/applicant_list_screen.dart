@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'chat_room_screen.dart';
+import 'advanced_chat_screen.dart';
 
 // Timestamp for contract creation timestamp
 
@@ -205,11 +205,12 @@ class ApplicantListScreen extends StatelessWidget {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
-                                              builder: (_) => ChatRoomScreen(
-                                                otherUserId: freelancerUid,
-                                                otherUserName: fname,
-                                                jobId: jobId,
-                                              ),
+                                              builder: (_) =>
+                                                  AdvancedChatScreen(
+                                                    otherUserId: freelancerUid,
+                                                    otherUserName: fname,
+                                                    jobId: jobId,
+                                                  ),
                                             ),
                                           );
                                         },

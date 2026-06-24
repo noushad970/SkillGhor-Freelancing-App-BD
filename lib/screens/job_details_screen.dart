@@ -50,7 +50,25 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           }
 
           final job = snapshot.data!.data() as Map<String, dynamic>;
-          final status = JobStatus.values[job['status'] ?? 0];
+
+          // status can be stored as int (enum index) or as string name ('ongoing') depending on other code paths.
+          final rawStatus = job['status'];
+          JobStatus status = JobStatus.open;
+          if (rawStatus is int) {
+            int idx = rawStatus;
+            if (idx < 0) idx = 0;
+            if (idx >= JobStatus.values.length) {
+              idx = JobStatus.values.length - 1;
+            }
+            status = JobStatus.values[idx];
+          } else if (rawStatus is String) {
+            final key = rawStatus.toLowerCase();
+            status = JobStatus.values.firstWhere(
+              (e) => e.toString().split('.').last.toLowerCase() == key,
+              orElse: () => JobStatus.open,
+            );
+          }
+
           final isOngoing = status == JobStatus.ongoing;
 
           return SingleChildScrollView(

@@ -81,16 +81,23 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
 
                 // Filter proposals based on selected status
                 final allProposals = snapshot.data!;
+                String normalizeProposalStatus(ProposalStatus s) =>
+                    s.toString().split('.').last.toLowerCase();
+
                 final filteredProposals = _filterStatus == 'all'
                     ? allProposals
                     : allProposals
-                          .where((p) => p.status.name == _filterStatus)
+                          .where(
+                            (p) =>
+                                normalizeProposalStatus(p.status) ==
+                                _filterStatus,
+                          )
                           .toList();
 
                 if (filteredProposals.isEmpty) {
                   return Center(
                     child: Text(
-                      'No $_filterStatus proposals',
+                      'No ${_filterStatus == 'all' ? '' : _filterStatus} proposals',
                       style: const TextStyle(color: Colors.grey),
                     ),
                   );
@@ -125,9 +132,30 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
           );
         }
 
-        final jobData = snapshot.data!['job'] as Map<String, dynamic>;
-        final jobTitle = jobData['title'] as String? ?? 'Untitled Job';
-        final jobStatus = JobStatus.values[jobData['status'] ?? 0];
+        final jobData = snapshot.data!['job'] as Map<String, dynamic>?;
+        final jobTitle =
+            (jobData != null ? jobData['title'] as String? : null) ??
+            'Untitled Job';
+
+        // Parse job status robustly (int index or string)
+        JobStatus jobStatus = JobStatus.open;
+        if (jobData != null) {
+          final raw = jobData['status'];
+          if (raw is int) {
+            int idx = raw;
+            if (idx < 0) idx = 0;
+            if (idx >= JobStatus.values.length) {
+              idx = JobStatus.values.length - 1;
+            }
+            jobStatus = JobStatus.values[idx];
+          } else if (raw is String) {
+            final key = raw.toLowerCase();
+            jobStatus = JobStatus.values.firstWhere(
+              (e) => e.toString().split('.').last.toLowerCase() == key,
+              orElse: () => JobStatus.open,
+            );
+          }
+        }
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -155,7 +183,7 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Job Status: ${jobStatus.name.toUpperCase()}',
+                            'Job Status: ${jobStatus.toString().split('.').last.toUpperCase()}',
                             style: TextStyle(
                               fontSize: 12,
                               color: _getJobStatusColor(jobStatus),
@@ -175,7 +203,11 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        proposal.status.name.toUpperCase(),
+                        proposal.status
+                            .toString()
+                            .split('.')
+                            .last
+                            .toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
