@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'freelancer_edit_profile_screen.dart';
-import 'buy_connects_screen.dart';
 
 class FreelancerProfileScreen extends StatelessWidget {
   const FreelancerProfileScreen({super.key});
@@ -42,7 +41,7 @@ class FreelancerProfileScreen extends StatelessWidget {
                 final username = data['username'] ?? '';
                 final photoUrl = data['photoUrl'];
                 final country = data['country'] ?? '';
-                final completion = (data['profileCompletion'] ?? 0) as int;
+                // profileCompletion unused in enhanced UI; keep in DB but not displayed here
                 final isVerified = data['isVerified'] == true;
                 final bio = (data['bio'] ?? '') as String;
                 final skills = List<String>.from(data['skills'] ?? const []);
@@ -65,225 +64,281 @@ class FreelancerProfileScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header
-                      Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CircleAvatar(
-                                radius: 40,
-                                backgroundImage: photoUrl != null
-                                    ? NetworkImage(photoUrl)
-                                    : null,
-                                child: photoUrl == null
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 40,
-                                        color: Colors.green,
-                                      )
-                                    : null,
+                      // Enhanced Header with gradient background
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.green.shade600,
+                                  Colors.green.shade400,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            name,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 20,
+                            ),
+                            child: Row(
+                              children: [
+                                // left empty to let avatar overlap
+                                const SizedBox(width: 110),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (isVerified)
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.verified,
+                                              color: Colors.white70,
+                                              size: 14,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Verified',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          if (username.isNotEmpty)
+                                            Text(
+                                              '@$username',
+                                              style: const TextStyle(
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                          if (username.isNotEmpty &&
+                                              country.isNotEmpty)
+                                            const SizedBox(width: 8),
+                                          if (country.isNotEmpty)
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.public,
+                                                  size: 14,
+                                                  color: Colors.white70,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  country,
+                                                  style: const TextStyle(
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white24,
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.star,
+                                                  color: Colors.amber,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  '${rating.toStringAsFixed(1)}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  '($totalReviews)',
+                                                  style: const TextStyle(
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        Icon(
-                                          isVerified
-                                              ? Icons.verified
-                                              : Icons.verified_user_outlined,
-                                          color: isVerified
-                                              ? Colors.blue
-                                              : Colors.grey,
-                                          size: 20,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        if (username.isNotEmpty)
-                                          Text(
-                                            '@$username',
-                                            style: TextStyle(
-                                              color: Colors.grey[700],
+                                          const SizedBox(width: 12),
+                                          ElevatedButton.icon(
+                                            onPressed: () {
+                                              // message action
+                                              // If you want, route to chat screen
+                                            },
+                                            icon: const Icon(
+                                              Icons.message,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Message'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              foregroundColor:
+                                                  Colors.green.shade700,
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
                                             ),
                                           ),
-                                        if (username.isNotEmpty &&
-                                            country.isNotEmpty)
                                           const SizedBox(width: 8),
-                                        if (country.isNotEmpty)
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.public,
-                                                size: 16,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(country),
-                                            ],
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: LinearProgressIndicator(
-                                            value: completion / 100,
-                                            backgroundColor: Colors.grey[300],
-                                            valueColor: AlwaysStoppedAnimation(
-                                              completion >= 90
-                                                  ? Colors.green
-                                                  : Colors.orange,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text('$completion% complete'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Row(
-                                      children: [
-                                        ElevatedButton.icon(
-                                          onPressed: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const FreelancerEditProfileScreen(),
-                                              ),
-                                            );
-                                          },
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            size: 18,
-                                          ),
-                                          label: const Text('Edit Profile'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                Colors.green.shade600,
-                                            foregroundColor: Colors.white,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        if (!isVerified)
                                           OutlinedButton.icon(
                                             onPressed: () {
-                                              ScaffoldMessenger.of(
+                                              Navigator.push(
                                                 context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'ID Verification coming soon',
-                                                  ),
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const FreelancerEditProfileScreen(),
                                                 ),
                                               );
                                             },
                                             icon: const Icon(
-                                              Icons.badge_outlined,
-                                              size: 18,
+                                              Icons.edit,
+                                              size: 16,
                                             ),
-                                            label: const Text('Verify ID'),
+                                            label: const Text('Edit'),
                                             style: OutlinedButton.styleFrom(
-                                              foregroundColor: Colors.orange,
+                                              foregroundColor: Colors.white,
                                               side: BorderSide(
-                                                color: Colors.orange.shade300,
+                                                color: Colors.white24,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
                                               ),
                                             ),
                                           ),
-                                      ],
-                                    ),
-                                  ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Avatar overlapping the header
+                          Positioned(
+                            left: 16,
+                            top: 20,
+                            child: Material(
+                              elevation: 6,
+                              shape: const CircleBorder(),
+                              child: CircleAvatar(
+                                radius: 54,
+                                backgroundColor: Colors.white,
+                                child: CircleAvatar(
+                                  radius: 50,
+                                  backgroundImage: photoUrl != null
+                                      ? NetworkImage(photoUrl)
+                                      : null,
+                                  child: photoUrl == null
+                                      ? const Icon(
+                                          Icons.person,
+                                          size: 40,
+                                          color: Colors.green,
+                                        )
+                                      : null,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Stats
-                      Row(
-                        children: [
-                          _statCard(
-                            title: 'totalConnects',
-                            value: connects.toString(),
-                            icon: Icons.vpn_key,
-                          ),
-                          const SizedBox(width: 12),
-                          _statCard(
-                            title: 'totalProposals',
-                            value: proposals.toString(),
-                            icon: Icons.send,
-                          ),
-                          const SizedBox(width: 12),
-                          _statCard(
-                            title: 'totalEarnings',
-                            value: '৳${earnings.toStringAsFixed(0)}',
-                            icon: Icons.account_balance_wallet,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      if (connects < 10)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const BuyConnectsScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text('Buy More Connects'),
-                          ),
-                        ),
 
                       const SizedBox(height: 20),
 
-                      // About
+                      // Stats - improved cards
+                      Row(
+                        children: [
+                          _smallStatCard(
+                            'Connects',
+                            connects.toString(),
+                            Icons.vpn_key,
+                          ),
+                          const SizedBox(width: 10),
+                          _smallStatCard(
+                            'Proposals',
+                            proposals.toString(),
+                            Icons.send,
+                          ),
+                          const SizedBox(width: 10),
+                          _smallStatCard(
+                            'Earnings',
+                            '৳${earnings.toStringAsFixed(0)}',
+                            Icons.account_balance_wallet,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // About - nicer typography
                       _sectionTitle('About'),
                       Card(
-                        elevation: 2,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Text(
                             bio.isNotEmpty
                                 ? bio
                                 : 'Add a professional bio so clients can learn more about you.',
-                            style: const TextStyle(fontSize: 14),
+                            style: const TextStyle(fontSize: 15, height: 1.4),
                           ),
                         ),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // Skills
+                      // Skills as chips with color
                       _sectionTitle('Skills'),
                       Card(
-                        elevation: 2,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: skills.isNotEmpty
@@ -294,8 +349,12 @@ class FreelancerProfileScreen extends StatelessWidget {
                                       .map(
                                         (s) => Chip(
                                           label: Text(s),
-                                          backgroundColor:
-                                              Colors.green.shade100,
+                                          backgroundColor: Colors.green.shade50,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                       )
                                       .toList(),
@@ -311,7 +370,10 @@ class FreelancerProfileScreen extends StatelessWidget {
                       // Languages
                       _sectionTitle('Languages'),
                       Card(
-                        elevation: 2,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: languages.isNotEmpty
@@ -319,7 +381,12 @@ class FreelancerProfileScreen extends StatelessWidget {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: languages
-                                      .map((l) => Chip(label: Text(l)))
+                                      .map(
+                                        (l) => Chip(
+                                          label: Text(l),
+                                          backgroundColor: Colors.blue.shade50,
+                                        ),
+                                      )
                                       .toList(),
                                 )
                               : const Text(
@@ -330,75 +397,49 @@ class FreelancerProfileScreen extends StatelessWidget {
 
                       const SizedBox(height: 16),
 
-                      // Education
-                      _sectionTitle('Education'),
-                      Card(
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: education.isNotEmpty
-                              ? Column(
-                                  children: education
-                                      .map(
-                                        (e) => ListTile(
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                              ),
-                                          title: Text(
-                                            (e['degree'] ?? '') as String,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          subtitle: Text(
-                                            '${e['school'] ?? ''} • ${e['year'] ?? ''}',
-                                          ),
-                                          leading: const Icon(Icons.school),
+                      // Education (reinserted)
+                      if (education.isNotEmpty) ...[
+                        _sectionTitle('Education'),
+                        Card(
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              children: education
+                                  .map(
+                                    (e) => ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: const Icon(Icons.school),
+                                      title: Text(
+                                        (e['degree'] ?? '') as String,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                      )
-                                      .toList(),
-                                )
-                              : const Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: Text('Add your education history.'),
-                                ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Rating summary
-                      _sectionTitle('Rating'),
-                      Card(
-                        elevation: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Icon(Icons.star, color: Colors.amber[700]),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${rating.toStringAsFixed(1)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('($totalReviews reviews)'),
-                            ],
+                                      ),
+                                      subtitle: Text(
+                                        '${e['school'] ?? ''} • ${e['year'] ?? ''}',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
 
-                      // Reviews list
+                      // Reviews - polished list
                       _sectionTitle('Reviews'),
                       Card(
-                        elevation: 2,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
                           child: StreamBuilder<QuerySnapshot>(
                             stream: FirebaseFirestore.instance
                                 .collection('reviews')
@@ -408,24 +449,37 @@ class FreelancerProfileScreen extends StatelessWidget {
                             builder: (context, reviewsSnap) {
                               if (reviewsSnap.connectionState ==
                                   ConnectionState.waiting) {
-                                return const Center(
-                                  child: CircularProgressIndicator(),
+                                return const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 );
                               }
                               if (reviewsSnap.hasError) {
-                                return Text('Error: ${reviewsSnap.error}');
+                                return Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Text('Error: ${reviewsSnap.error}'),
+                                );
                               }
                               final docs = reviewsSnap.data?.docs ?? [];
                               if (docs.isEmpty) {
                                 return const Padding(
-                                  padding: EdgeInsets.all(8.0),
+                                  padding: EdgeInsets.all(12.0),
                                   child: Text('No reviews yet.'),
                                 );
                               }
 
-                              return Column(
-                                children: docs.map((d) {
-                                  final r = d.data() as Map<String, dynamic>;
+                              return ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: docs.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final r =
+                                      docs[index].data()
+                                          as Map<String, dynamic>;
                                   final reviewerId =
                                       r['reviewerId'] as String? ?? '';
                                   final ratingVal = (r['rating'] ?? 0) as num;
@@ -451,19 +505,34 @@ class FreelancerProfileScreen extends StatelessWidget {
                                       final reviewerName =
                                           (reviewerData['name'] as String?) ??
                                           'Client';
+                                      final reviewerPhoto =
+                                          (reviewerData['photoUrl']
+                                              as String?) ??
+                                          null;
 
                                       return ListTile(
-                                        contentPadding: EdgeInsets.zero,
                                         leading: CircleAvatar(
-                                          child: Text(
-                                            reviewerName.isNotEmpty
-                                                ? reviewerName[0]
-                                                : 'C',
-                                          ),
+                                          backgroundImage: reviewerPhoto != null
+                                              ? NetworkImage(reviewerPhoto)
+                                              : null,
+                                          child: reviewerPhoto == null
+                                              ? Text(
+                                                  reviewerName.isNotEmpty
+                                                      ? reviewerName[0]
+                                                      : 'C',
+                                                )
+                                              : null,
                                         ),
                                         title: Row(
                                           children: [
-                                            Expanded(child: Text(reviewerName)),
+                                            Expanded(
+                                              child: Text(
+                                                reviewerName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
                                             const SizedBox(width: 8),
                                             Row(
                                               children: [
@@ -483,12 +552,17 @@ class FreelancerProfileScreen extends StatelessWidget {
                                               CrossAxisAlignment.start,
                                           children: [
                                             if (comment.isNotEmpty)
-                                              Text(comment),
-                                            const SizedBox(height: 6),
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 6.0,
+                                                  bottom: 6.0,
+                                                ),
+                                                child: Text(comment),
+                                              ),
                                             Text(
                                               dateStr,
                                               style: TextStyle(
-                                                fontSize: 11,
+                                                fontSize: 12,
                                                 color: Colors.grey[600],
                                               ),
                                             ),
@@ -497,13 +571,14 @@ class FreelancerProfileScreen extends StatelessWidget {
                                       );
                                     },
                                   );
-                                }).toList(),
+                                },
                               );
                             },
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+
+                      const SizedBox(height: 24),
 
                       // Portfolio
                       _sectionTitle('Portfolio'),
@@ -539,34 +614,31 @@ class FreelancerProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _statCard({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
+  Widget _smallStatCard(String title, String value, IconData icon) {
     return Expanded(
-      child: Card(
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            children: [
-              Icon(icon, size: 28, color: Colors.green.shade600),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                title,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: Colors.green.shade600, size: 20),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
         ),
       ),
     );
