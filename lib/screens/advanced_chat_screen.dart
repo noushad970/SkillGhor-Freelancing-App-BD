@@ -42,6 +42,18 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen> {
     final userIds = [uid, widget.otherUserId];
     userIds.sort();
     _roomId = userIds.join('_');
+
+    // Clear unread count for current user for this room when they open it
+    try {
+      _db
+          .collection('user_chats')
+          .doc(uid)
+          .collection('rooms')
+          .doc(_roomId)
+          .set({'unreadCount': 0}, SetOptions(merge: true));
+    } catch (_) {
+      // ignore
+    }
   }
 
   @override
@@ -80,7 +92,7 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen> {
         'edited': false,
       });
 
-      // Update user chats index
+      // Update user chats index for sender
       await _db
           .collection('user_chats')
           .doc(uid)
@@ -93,7 +105,30 @@ class _AdvancedChatScreenState extends State<AdvancedChatScreen> {
             'jobId': widget.jobId,
             'lastMessage': message,
             'updatedAt': FieldValue.serverTimestamp(),
-          });
+            'unreadCount': 0,
+          }, SetOptions(merge: true));
+
+      // Update user chats index for recipient and increment their unread count
+      try {
+        final senderName = _auth.currentUser!.displayName ?? '';
+        await _db
+            .collection('user_chats')
+            .doc(widget.otherUserId)
+            .collection('rooms')
+            .doc(_roomId)
+            .set({
+              'roomId': _roomId,
+              'peerId': uid,
+              'peerName': senderName,
+              'jobId': widget.jobId,
+              'lastMessage': message,
+              'updatedAt': FieldValue.serverTimestamp(),
+              // increment unread for recipient
+              'unreadCount': FieldValue.increment(1),
+            }, SetOptions(merge: true));
+      } catch (_) {
+        // ignore failures to update recipient index
+      }
 
       // Notify recipient
       await _notificationService.notifyMessageReceived(

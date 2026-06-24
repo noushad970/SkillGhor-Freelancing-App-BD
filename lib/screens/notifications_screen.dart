@@ -3,14 +3,34 @@ import 'package:flutter/material.dart';
 import 'job_details_screen.dart';
 import 'messages_screen.dart';
 import 'wallet_screen.dart';
+import 'review_screen.dart';
 import '../services/notification_service.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // When the user opens the notifications screen, mark all as read so the
+    // unread badge clears. New notifications will re-appear automatically.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await _notificationService.markAllAsRead();
+      } catch (_) {}
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final notificationService = NotificationService();
+    final notificationService = _notificationService;
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -94,9 +114,21 @@ class NotificationsScreen extends StatelessWidget {
                 notification: notif,
                 onTap: () async {
                   await notificationService.markAsRead(notif.id);
+                  if (!mounted)
+                    return; // avoid using context after widget disposed
                   // Navigate based on actionUrl
                   if (notif.actionUrl != null) {
                     final url = notif.actionUrl!;
+                    if (url.startsWith('/contracts/')) {
+                      final contractId = url.split('/contracts/').last;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ReviewScreen(contractId: contractId),
+                        ),
+                      );
+                      return;
+                    }
                     if (url.startsWith('/job/')) {
                       final jobId = url.split('/job/').last;
                       Navigator.push(
@@ -125,9 +157,11 @@ class NotificationsScreen extends StatelessWidget {
                       return;
                     }
                     // unknown route
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Action: ${notif.actionUrl}')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Action: $url')));
+                    }
                   }
                 },
                 onDismiss: () async {

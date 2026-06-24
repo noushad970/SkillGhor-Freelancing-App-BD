@@ -212,7 +212,13 @@ class EarningsDashboardScreen extends StatelessWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          _getTransactionLabel(txn.type),
+                                          _getTransactionLabel(
+                                            TransactionType.values.firstWhere(
+                                              (e) => e.toString() == txn.type,
+                                              orElse: () =>
+                                                  TransactionType.jobPayment,
+                                            ),
+                                          ),
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),

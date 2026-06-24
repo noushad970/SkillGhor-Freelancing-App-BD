@@ -346,15 +346,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                             // Navigate to role home
                             if (widget.role == 'freelancer') {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/freelancer',
-                              );
+                              Navigator.pushReplacementNamed(context, '/home');
                             } else {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/client',
-                              );
+                              Navigator.pushReplacementNamed(context, '/home');
                             }
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(

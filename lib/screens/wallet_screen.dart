@@ -149,8 +149,8 @@ class WalletScreen extends StatelessWidget {
                                 itemBuilder: (context, index) {
                                   final txn = transactions[index];
                                   final isIncome =
-                                      txn.type == TransactionType.jobPayment ||
-                                      txn.type == TransactionType.bonus;
+                                      txn.type == 'jobPayment' ||
+                                      txn.type == 'bonus';
 
                                   return ListTile(
                                     leading: CircleAvatar(
@@ -272,18 +272,20 @@ class WalletScreen extends StatelessWidget {
     );
   }
 
-  String _getTransactionTitle(TransactionType type) {
+  String _getTransactionTitle(String type) {
     switch (type) {
-      case TransactionType.jobPayment:
+      case 'jobPayment':
         return 'Job Payment';
-      case TransactionType.connectPurchase:
+      case 'connectPurchase':
         return 'Connect Purchase';
-      case TransactionType.withdrawal:
+      case 'withdrawal':
         return 'Withdrawal';
-      case TransactionType.refund:
+      case 'refund':
         return 'Refund';
-      case TransactionType.bonus:
+      case 'bonus':
         return 'Bonus';
+      default:
+        return type;
     }
   }
 

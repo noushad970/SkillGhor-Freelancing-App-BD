@@ -199,6 +199,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                   'postedAt': FieldValue.serverTimestamp(),
                                   'status': 'open',
                                   'applicants': [],
+                                  'proposalsCount':
+                                      0, // initialize proposals counter
                                 });
 
                             ScaffoldMessenger.of(context).showSnackBar(

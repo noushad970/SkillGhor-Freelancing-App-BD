@@ -86,7 +86,6 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
               stream: FirebaseFirestore.instance
                   .collection('jobs')
                   .where('status', isEqualTo: 'open')
-                  .orderBy('postedAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

@@ -75,7 +75,30 @@ class ApplicantListScreen extends StatelessWidget {
                             child: Text('No proposals submitted yet'),
                           );
                         }
-                        final props = propSnap.data!.docs;
+                        // Filter out proposals that are already approved/accepted
+                        final allProps = propSnap.data!.docs;
+                        final props = allProps.where((p) {
+                          final data = p.data() as Map<String, dynamic>? ?? {};
+                          final status = data['status'];
+                          if (status == null) return true;
+                          if (status is String) {
+                            final s = status.toLowerCase();
+                            return s != 'approved' && s != 'accepted';
+                          }
+                          if (status is int) {
+                            // If your codebase uses integers for status, assume 1 means approved
+                            return status != 1;
+                          }
+                          return true;
+                        }).toList();
+
+                        if (props.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text('No proposals submitted yet'),
+                          );
+                        }
+
                         return ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -148,12 +171,12 @@ class ApplicantListScreen extends StatelessWidget {
                                       ElevatedButton(
                                         onPressed: () async {
                                           try {
-                                            // Update proposal status to approved
+                                            // Update proposal status
                                             await p.reference.update({
                                               'status': 'approved',
                                             });
 
-                                            // Create contract document
+                                            // Create contract document matching schema
                                             await FirebaseFirestore.instance
                                                 .collection('contracts')
                                                 .add({
@@ -162,11 +185,17 @@ class ApplicantListScreen extends StatelessWidget {
                                                   'jobId': jobId,
                                                   'jobTitle': title,
                                                   'status': 'active',
-                                                  'createdAt': Timestamp.now(),
-                                                  'updatedAt': Timestamp.now(),
+                                                  'completedByClient': false,
+                                                  'completionReviewedAt': null,
+                                                  'reviewed': false,
+                                                  'reviewedAt': null,
+                                                  'createdAt':
+                                                      FieldValue.serverTimestamp(),
+                                                  'updatedAt':
+                                                      FieldValue.serverTimestamp(),
                                                 });
 
-                                            // Update job to mark as having active contract
+                                            // Update job status
                                             await FirebaseFirestore.instance
                                                 .collection('jobs')
                                                 .doc(jobId)

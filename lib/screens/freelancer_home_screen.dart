@@ -12,6 +12,8 @@ import 'earnings_reports_screen.dart'; // Earnings
 import 'buy_connects_screen.dart'; // Buy Connects
 import 'apply_job_screen.dart';
 import 'saved_jobs_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
 
 class FreelancerHomeScreen extends StatelessWidget {
   const FreelancerHomeScreen({super.key});
@@ -35,9 +37,58 @@ class FreelancerHomeScreen extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+
+          // Notification icon with badge
+          Padding(
+            padding: const EdgeInsets.only(right: 4.0),
+            child: StreamBuilder<List<AppNotification>>(
+              stream: NotificationService().getUnreadNotifications(),
+              builder: (context, snap) {
+                final unread = snap.data?.length ?? 0;
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_outlined),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    if (unread > 0)
+                      Positioned(
+                        right: 6,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Center(
+                            child: Text(
+                              unread > 99 ? '99+' : unread.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
 
           const SizedBox(width: 12),
@@ -546,7 +597,6 @@ class FreelancerHomeScreen extends StatelessWidget {
               stream: FirebaseFirestore.instance
                   .collection('jobs')
                   .where('status', isEqualTo: 'open')
-                  .orderBy('postedAt', descending: true)
                   .limit(5)
                   .snapshots(),
               builder: (context, snapshot) {

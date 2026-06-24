@@ -45,10 +45,28 @@ class AppNotification {
   });
 
   factory AppNotification.fromMap(Map<String, dynamic> map, String id) {
+    // type can be stored as int index (old) or string (new)
+    NotificationType parseType(dynamic raw) {
+      if (raw is int) {
+        return NotificationType.values[raw.clamp(
+          0,
+          NotificationType.values.length - 1,
+        )];
+      }
+      if (raw is String) {
+        return NotificationType.values.firstWhere(
+          (e) =>
+              e.toString().split('.').last.toLowerCase() == raw.toLowerCase(),
+          orElse: () => NotificationType.messageReceived,
+        );
+      }
+      return NotificationType.messageReceived;
+    }
+
     return AppNotification(
       id: id,
       userId: map['userId'] ?? '',
-      type: NotificationType.values[map['type'] ?? 0],
+      type: parseType(map['type']),
       title: map['title'] ?? '',
       message: map['message'] ?? '',
       actionUrl: map['actionUrl'],
@@ -62,7 +80,7 @@ class AppNotification {
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
-    'type': type.index,
+    'type': type.toString().split('.').last, // store as string to match schema
     'title': title,
     'message': message,
     'actionUrl': actionUrl,
@@ -92,7 +110,7 @@ class NotificationService {
     try {
       await _db.collection('notifications').add({
         'userId': userId,
-        'type': type.index,
+        'type': type.toString().split('.').last, // string to match schema
         'title': title,
         'message': message,
         'actionUrl': actionUrl,
@@ -117,18 +135,20 @@ class NotificationService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return Stream.value([]);
 
+    // NOTE: removed server-side orderBy to avoid requiring a composite index.
+    // We'll sort results client-side by createdAt instead.
     return _db
         .collection('notifications')
         .where('userId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .limit(100)
+        .limit(200)
         .snapshots()
         .map((snap) {
           final notifications = snap.docs
               .map((doc) => AppNotification.fromMap(doc.data(), doc.id))
+              .where((n) => !n.read)
               .toList();
-          // Filter unread in code
-          notifications.removeWhere((n) => n.read);
+
+          notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return notifications.take(50).toList();
         });
   }
@@ -138,31 +158,39 @@ class NotificationService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return Stream.value([]);
 
+    // Avoid server-side orderBy to prevent composite index requirement.
     return _db
         .collection('notifications')
         .where('userId', isEqualTo: uid)
-        .orderBy('createdAt', descending: true)
-        .limit(limit)
+        .limit(limit > 0 ? limit : 1000)
         .snapshots()
-        .map(
-          (snap) => snap.docs
+        .map((snap) {
+          final list = snap.docs
               .map((doc) => AppNotification.fromMap(doc.data(), doc.id))
-              .toList(),
-        );
+              .toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          if (limit > 0 && list.length > limit)
+            return list.take(limit).toList();
+          return list;
+        });
   }
 
   /// Mark notification as read
   Future<void> markAsRead(String notificationId) async {
     try {
-      await _db.collection('notifications').doc(notificationId).update({
-        'read': true,
-      });
-
-      final uid = _auth.currentUser?.uid;
-      if (uid != null) {
-        await _db.collection('users').doc(uid).update({
-          'unreadNotifications': FieldValue.increment(-1),
-        });
+      final docRef = _db.collection('notifications').doc(notificationId);
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+      final data = doc.data() ?? {};
+      final alreadyRead = data['read'] == true;
+      if (!alreadyRead) {
+        await docRef.update({'read': true});
+        final uid = _auth.currentUser?.uid;
+        if (uid != null) {
+          await _db.collection('users').doc(uid).update({
+            'unreadNotifications': FieldValue.increment(-1),
+          });
+        }
       }
     } catch (e) {
       throw Exception('Failed to mark notification as read: $e');
@@ -181,16 +209,19 @@ class NotificationService {
           .where('userId', isEqualTo: uid)
           .get();
 
+      int toMark = 0;
       for (final doc in notifications.docs) {
         if (!(doc.data()['read'] ?? false)) {
           batch.update(doc.reference, {'read': true});
+          toMark++;
         }
       }
 
-      // Reset unread count
-      batch.update(_db.collection('users').doc(uid), {
-        'unreadNotifications': 0,
-      });
+      if (toMark > 0) {
+        batch.update(_db.collection('users').doc(uid), {
+          'unreadNotifications': FieldValue.increment(-toMark),
+        });
+      }
 
       await batch.commit();
     } catch (e) {
@@ -201,7 +232,19 @@ class NotificationService {
   /// Delete notification
   Future<void> deleteNotification(String notificationId) async {
     try {
-      await _db.collection('notifications').doc(notificationId).delete();
+      final docRef = _db.collection('notifications').doc(notificationId);
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+      final wasRead = doc.data()?['read'] == true;
+      await docRef.delete();
+      if (!wasRead) {
+        final uid = _auth.currentUser?.uid;
+        if (uid != null) {
+          await _db.collection('users').doc(uid).update({
+            'unreadNotifications': FieldValue.increment(-1),
+          });
+        }
+      }
     } catch (e) {
       throw Exception('Failed to delete notification: $e');
     }
@@ -243,13 +286,15 @@ class NotificationService {
     required String jobTitle,
     required String freelancerId,
     required String clientName,
+    String? contractId,
   }) async {
+    final target = contractId ?? jobId;
     await sendNotification(
       userId: freelancerId,
       type: NotificationType.proposalApproved,
       title: 'Proposal Approved!',
       message: '$clientName approved your proposal for "$jobTitle"',
-      actionUrl: '/contracts/$jobId',
+      actionUrl: '/contracts/$target',
       relatedJobId: jobId,
     );
   }

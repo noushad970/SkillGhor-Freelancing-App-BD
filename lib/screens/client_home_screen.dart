@@ -10,7 +10,7 @@ import 'my_jobs_screen.dart';
 import 'hired_freelancers_screen.dart';
 import 'client_profile_screen.dart';
 import 'invoices_payments_screen.dart';
-import 'onboarding_screen.dart';
+import '../services/payment_service.dart';
 
 class ClientHomeScreen extends StatefulWidget {
   const ClientHomeScreen({super.key});
@@ -142,6 +142,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         final name = data['name'] ?? user.displayName ?? 'Client';
         final company = data['companyName'] ?? 'Your Company';
         final isVerified = data['isVerified'] == true;
+        final walletBalance = (data['walletBalance'] ?? data['wallet'] ?? 0);
 
         // Dynamic Profile Completion for Client
         int completed = 0;
@@ -214,6 +215,15 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                     fontSize: 16,
                                   ),
                                 ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Wallet: ৳${(walletBalance is num ? walletBalance.toDouble() : double.tryParse(walletBalance.toString()) ?? 0).toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
@@ -259,38 +269,83 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                               backgroundColor: Colors.green.shade600,
                             ),
                           ),
-                          if (!isVerified)
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'ID Verification coming soon!',
+                          const SizedBox(width: 12),
+                          // Quick Top-up button
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final amountController = TextEditingController();
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Top-up Wallet'),
+                                  content: TextField(
+                                    controller: amountController,
+                                    keyboardType:
+                                        TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    decoration: const InputDecoration(
+                                      hintText: 'Amount (e.g. 500)',
                                     ),
                                   ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(ctx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Top-up'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                              final amt =
+                                  double.tryParse(
+                                    amountController.text.trim(),
+                                  ) ??
+                                  0;
+                              if (amt <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Enter a valid amount'),
+                                  ),
                                 );
-                              },
-                              icon: const Icon(
-                                Icons.badge_outlined,
-                                color: Colors.orange,
-                              ),
-                              label: const Text('Verify ID'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.orange,
-                              ),
-                            ),
+                                return;
+                              }
 
-                          // Onboarding quick button
-                          TextButton.icon(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const OnboardingScreen(role: 'client'),
-                              ),
+                              // perform demo top-up
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                              try {
+                                await PaymentService().topUpBalance(
+                                  amount: amt,
+                                );
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Wallet topped up'),
+                                  ),
+                                );
+                              } catch (e) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Top-up failed: $e')),
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.account_balance_wallet,
+                              color: Colors.green,
                             ),
-                            icon: const Icon(Icons.info_outline),
-                            label: const Text('Onboarding'),
+                            label: const Text('Top-up'),
                           ),
                         ],
                       ),

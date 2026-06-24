@@ -54,6 +54,7 @@ class AuthService extends ChangeNotifier {
     _userDocSubscription = docRef.snapshots().listen((snapshot) async {
       if (!snapshot.exists) {
         final initialData = {
+          // identity
           'uid': firebaseUser.uid,
           'email': firebaseUser.email,
           'name': firebaseUser.displayName ?? '',
@@ -62,22 +63,37 @@ class AuthService extends ChangeNotifier {
             ' ',
             '',
           ),
+          // role & onboarding
           'role': null,
           'onboarded': false,
           'createdAt': FieldValue.serverTimestamp(),
-          // verification & counters
+          // verification
           'isVerified': false,
-          'totalConnects': 20,
+          // profile fields (matches schema)
+          'bio': '',
+          'country': '',
+          'location': '',
+          'dateOfBirth': null,
+          'companyName': '',
+          'skills': <String>[],
+          'languages': <String>[],
+          'education': <Map<String, dynamic>>[],
+          'portfolioUrls': <String>[],
+          'portfolioGithub': '',
+          'portfolioWebsite': '',
+          'hourly_rate': 0,
+          // counters
+          'totalConnects': 50,
           'totalEarnings': 0,
           'totalProposals': 0,
           'totalSpent': 0,
-          // profile fields
-          'bio': '',
-          'skills': <String>[],
-          'hourly_rate': 0,
-          'location': '',
-          'education': <Map<String, dynamic>>[],
-          'portfolioUrls': <String>[],
+          'walletBalance': 0,
+          'rating': 0.0,
+          'totalReviews': 0,
+          'unreadNotifications': 0,
+          'profileCompletion': 0,
+          // saved jobs list
+          'savedJobs': <String>[],
         };
         await docRef.set(initialData);
       }
@@ -155,7 +171,7 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Google Sign-Out Error: $e');
     }
-    
+
     try {
       await _auth.signOut();
     } catch (e) {

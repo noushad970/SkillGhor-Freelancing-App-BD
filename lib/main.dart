@@ -31,7 +31,14 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       home: const AuthGate(),
-      routes: {'/home': (_) => const HomeScreen()},
+      routes: {
+        '/home': (_) => const HomeScreen(),
+        '/onboarding': (ctx) {
+          final role =
+              ModalRoute.of(ctx)!.settings.arguments as String? ?? 'freelancer';
+          return OnboardingScreen(role: role);
+        },
+      },
     );
   }
 }

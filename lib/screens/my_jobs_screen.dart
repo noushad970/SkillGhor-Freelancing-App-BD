@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'post_job_screen.dart';
 import 'applicant_list_screen.dart';
+import '../services/payment_service.dart';
 
 class MyJobsScreen extends StatefulWidget {
   const MyJobsScreen({super.key});
@@ -58,18 +59,11 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           // Jobs list
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _filterStatus == 'all'
-                  ? FirebaseFirestore.instance
-                        .collection('jobs')
-                        .where('clientId', isEqualTo: uid)
-                        .orderBy('createdAt', descending: true)
-                        .snapshots()
-                  : FirebaseFirestore.instance
-                        .collection('jobs')
-                        .where('clientId', isEqualTo: uid)
-                        .where('status', isEqualTo: _filterStatus)
-                        .orderBy('createdAt', descending: true)
-                        .snapshots(),
+              // Always query only by clientId + orderBy createdAt to avoid requiring a composite index
+              stream: FirebaseFirestore.instance
+                  .collection('jobs')
+                  .where('clientId', isEqualTo: uid)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -77,7 +71,18 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                final jobs = snapshot.data?.docs ?? const [];
+
+                // Get all jobs and filter client-side when a status filter is active
+                final allJobs = snapshot.data?.docs ?? const [];
+                final jobs = _filterStatus == 'all'
+                    ? allJobs
+                    : allJobs.where((d) {
+                        final data = d.data() as Map<String, dynamic>;
+                        final s = data['status'] ?? 'open';
+                        return s.toString().toLowerCase() ==
+                            _filterStatus.toLowerCase();
+                      }).toList();
+
                 if (jobs.isEmpty) {
                   return Center(
                     child: Column(
@@ -100,6 +105,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                     ),
                   );
                 }
+
                 return ListView.separated(
                   padding: const EdgeInsets.all(12),
                   itemCount: jobs.length,
@@ -133,7 +139,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                             const SizedBox(height: 4),
                             Chip(
                               label: Text(
-                                status.toUpperCase(),
+                                status.toString().toUpperCase(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -161,6 +167,143 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
                                 ),
                               ),
                             ),
+                            // Approve & Release Payment (visible for ongoing / awaiting_release / awaiting_review)
+                            if (status == 'ongoing' ||
+                                status == 'awaiting_release' ||
+                                status == 'awaiting_review')
+                              PopupMenuItem(
+                                child: const Text('Approve & Release Payment'),
+                                onTap: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                      title: const Text(
+                                        'Approve & Release Payment',
+                                      ),
+                                      content: Text(
+                                        'Are you sure you want to release payment for "$title"? This will transfer funds to the freelancer and complete the job.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: const Text('Confirm'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm != true) return;
+
+                                  // show progress
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (_) => const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+
+                                  try {
+                                    // find related contract for this job and client
+                                    final contractQuery =
+                                        await FirebaseFirestore.instance
+                                            .collection('contracts')
+                                            .where('jobId', isEqualTo: j.id)
+                                            .where('clientId', isEqualTo: uid)
+                                            .limit(1)
+                                            .get();
+
+                                    if (contractQuery.docs.isEmpty) {
+                                      Navigator.of(context).pop();
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Contract not found for this job',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    final contractDoc =
+                                        contractQuery.docs.first;
+                                    final cData = contractDoc.data();
+                                    final freelancerId =
+                                        cData['freelancerId'] as String? ?? '';
+                                    final invoiceId = (cData['invoiceId'] ?? '')
+                                        .toString();
+
+                                    // determine amount: contract.amount or contract.budget or job.budget
+                                    final amountRaw =
+                                        cData['amount'] ??
+                                        cData['budget'] ??
+                                        jData['budget'] ??
+                                        0;
+                                    final amount = (amountRaw is num)
+                                        ? amountRaw.toDouble()
+                                        : double.tryParse(
+                                                amountRaw.toString(),
+                                              ) ??
+                                              0.0;
+
+                                    final paymentService = PaymentService();
+
+                                    if (invoiceId.isNotEmpty) {
+                                      // finalize pending invoice
+                                      await paymentService
+                                          .finalizePendingPayment(invoiceId);
+                                    } else {
+                                      // immediate transfer
+                                      await paymentService.processJobPayment(
+                                        jobId: j.id,
+                                        freelancerId: freelancerId,
+                                        amount: amount,
+                                      );
+                                    }
+
+                                    // mark contract & job completed
+                                    await contractDoc.reference.update({
+                                      'status': 'completed',
+                                      'completedByClient': true,
+                                      'completionReviewedAt':
+                                          FieldValue.serverTimestamp(),
+                                      'updatedAt': FieldValue.serverTimestamp(),
+                                    });
+
+                                    await j.reference.update({
+                                      'status': 'completed',
+                                    });
+
+                                    Navigator.of(
+                                      context,
+                                    ).pop(); // dismiss progress
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Payment released and job completed',
+                                        ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    Navigator.of(
+                                      context,
+                                    ).pop(); // dismiss progress
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Release failed: $e'),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
                             if (status == 'open')
                               PopupMenuItem(
                                 child: const Text('Close Job'),

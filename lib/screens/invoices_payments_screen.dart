@@ -54,6 +54,11 @@ class InvoicesPaymentsScreen extends StatelessWidget {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final t = transactions[index];
+
+                    // Show actionable Release button for pending job payments
+                    final isPendingInvoice =
+                        t.status == 'pending' && t.type == 'jobPayment';
+
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: t.amount >= 0
@@ -67,8 +72,79 @@ class InvoicesPaymentsScreen extends StatelessWidget {
                         ),
                       ),
                       title: Text('\u09F3${t.amount.toStringAsFixed(0)}'),
-                      subtitle: Text(t.type.name.toUpperCase()),
-                      trailing: Text(t.status.name.toUpperCase()),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t.type.toUpperCase()),
+                          if (t.jobId != null && t.jobId!.isNotEmpty)
+                            Text('Job: ${t.jobId}'),
+                        ],
+                      ),
+                      trailing: isPendingInvoice
+                          ? ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                              ),
+                              child: const Text('Release'),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Release Payment'),
+                                    content: Text(
+                                      'Are you sure you want to release \u09F3${t.amount.toStringAsFixed(0)} to the freelancer? This will deduct the amount from your wallet.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, true),
+                                        child: const Text('Release'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm != true) return;
+
+                                // show progress
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (_) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+
+                                try {
+                                  await paymentService.finalizePendingPayment(
+                                    t.id,
+                                  );
+                                  Navigator.of(
+                                    context,
+                                  ).pop(); // dismiss progress
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Payment released'),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  Navigator.of(
+                                    context,
+                                  ).pop(); // dismiss progress
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Release failed: $e'),
+                                    ),
+                                  );
+                                }
+                              },
+                            )
+                          : Text(t.status.toUpperCase()),
                     );
                   },
                 );

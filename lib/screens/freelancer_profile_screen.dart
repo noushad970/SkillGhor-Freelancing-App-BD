@@ -57,6 +57,8 @@ class FreelancerProfileScreen extends StatelessWidget {
                 final connects = (data['totalConnects'] ?? 20) as int;
                 final proposals = (data['totalProposals'] ?? 0) as int;
                 final earnings = (data['totalEarnings'] ?? 0) as num;
+                final rating = (data['rating'] ?? 0) as num;
+                final totalReviews = (data['totalReviews'] ?? 0) as int;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -364,6 +366,143 @@ class FreelancerProfileScreen extends StatelessWidget {
                         ),
                       ),
 
+                      const SizedBox(height: 16),
+
+                      // Rating summary
+                      _sectionTitle('Rating'),
+                      Card(
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.star, color: Colors.amber[700]),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${rating.toStringAsFixed(1)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('($totalReviews reviews)'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Reviews list
+                      _sectionTitle('Reviews'),
+                      Card(
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('reviews')
+                                .where('revieweeId', isEqualTo: currentUser.uid)
+                                .orderBy('createdAt', descending: true)
+                                .snapshots(),
+                            builder: (context, reviewsSnap) {
+                              if (reviewsSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
+                              if (reviewsSnap.hasError) {
+                                return Text('Error: ${reviewsSnap.error}');
+                              }
+                              final docs = reviewsSnap.data?.docs ?? [];
+                              if (docs.isEmpty) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Text('No reviews yet.'),
+                                );
+                              }
+
+                              return Column(
+                                children: docs.map((d) {
+                                  final r = d.data() as Map<String, dynamic>;
+                                  final reviewerId =
+                                      r['reviewerId'] as String? ?? '';
+                                  final ratingVal = (r['rating'] ?? 0) as num;
+                                  final comment =
+                                      (r['comment'] ?? '') as String;
+                                  final ts = r['createdAt'] as Timestamp?;
+                                  final dateStr = ts != null
+                                      ? DateTime.fromMillisecondsSinceEpoch(
+                                          ts.millisecondsSinceEpoch,
+                                        ).toLocal().toString()
+                                      : '';
+
+                                  return FutureBuilder<DocumentSnapshot>(
+                                    future: FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(reviewerId)
+                                        .get(),
+                                    builder: (context, reviewerSnap) {
+                                      final reviewerData =
+                                          reviewerSnap.data?.data()
+                                              as Map<String, dynamic>? ??
+                                          {};
+                                      final reviewerName =
+                                          (reviewerData['name'] as String?) ??
+                                          'Client';
+
+                                      return ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: CircleAvatar(
+                                          child: Text(
+                                            reviewerName.isNotEmpty
+                                                ? reviewerName[0]
+                                                : 'C',
+                                          ),
+                                        ),
+                                        title: Row(
+                                          children: [
+                                            Expanded(child: Text(reviewerName)),
+                                            const SizedBox(width: 8),
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.star,
+                                                  color: Colors.amber,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(ratingVal.toString()),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                        subtitle: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if (comment.isNotEmpty)
+                                              Text(comment),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              dateStr,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  );
+                                }).toList(),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // Portfolio

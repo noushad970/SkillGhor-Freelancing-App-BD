@@ -1,6 +1,8 @@
 // lib/services/job_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'notification_service.dart';
+import 'payment_service.dart';
 
 enum JobStatus { open, ongoing, completed, cancelled, onHold }
 
@@ -20,30 +22,43 @@ class JobService {
     if (uid == null) throw Exception('User not authenticated');
 
     try {
+      // Fetch job title first
+      final jobDoc = await _db.collection('jobs').doc(jobId).get();
+      final jobTitle = jobDoc.data()?['title'] as String? ?? '';
+
       final batch = _db.batch();
 
-      // Update job status
+      // Update job status (use string to match schema)
       batch.update(_db.collection('jobs').doc(jobId), {
-        'status': JobStatus.ongoing.index,
+        'status': 'ongoing',
         'freelancerId': freelancerId,
-        'startedAt': FieldValue.serverTimestamp(),
-        'estimatedCompletion': Timestamp.fromDate(estimatedCompletion),
       });
 
-      // Create contract record
+      // Create contract record matching schema exactly
       final contractRef = _db.collection('contracts').doc();
       batch.set(contractRef, {
         'jobId': jobId,
+        'jobTitle': jobTitle,
         'clientId': uid,
         'freelancerId': freelancerId,
-        'status': ContractStatus.active.index,
-        'startedAt': FieldValue.serverTimestamp(),
-        'estimatedCompletion': Timestamp.fromDate(estimatedCompletion),
+        'status': 'active',
+        'completedByClient': false,
+        'completionReviewedAt': null,
+        'reviewed': false,
+        'reviewedAt': null,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       await batch.commit();
+      try {
+        await NotificationService().notifyJobStarted(
+          jobId: jobId,
+          jobTitle: jobTitle,
+          clientId: uid,
+          freelancerId: freelancerId,
+        );
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to start job: $e');
     }
@@ -62,22 +77,38 @@ class JobService {
     try {
       final batch = _db.batch();
 
-      // Update job status
-      batch.update(_db.collection('jobs').doc(jobId), {
-        'status': JobStatus.completed.index,
-        'completedAt': FieldValue.serverTimestamp(),
-      });
+      // Update job status (string matches schema)
+      batch.update(_db.collection('jobs').doc(jobId), {'status': 'completed'});
 
-      // Update contract status
+      // Update contract status (string matches schema)
       batch.update(_db.collection('contracts').doc(contractId), {
-        'status': ContractStatus.completed.index,
-        'completedAt': FieldValue.serverTimestamp(),
-        'feedback': feedback,
-        'rating': rating,
+        'status': 'completed',
+        'completedByClient': true,
+        'completionReviewedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       await batch.commit();
+      try {
+        // Notify both parties about job completion
+        final jobDoc = await _db.collection('jobs').doc(jobId).get();
+        final jobTitle = jobDoc.data()?['title'] as String? ?? 'your job';
+        final contractDoc = await _db
+            .collection('contracts')
+            .doc(contractId)
+            .get();
+        final clientId = contractDoc.data()?['clientId'] as String? ?? '';
+        final freelancerId =
+            contractDoc.data()?['freelancerId'] as String? ?? '';
+        if (clientId.isNotEmpty && freelancerId.isNotEmpty) {
+          await NotificationService().notifyContractCompleted(
+            jobId: jobId,
+            jobTitle: jobTitle,
+            clientId: clientId,
+            freelancerId: freelancerId,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to complete job: $e');
     }
@@ -92,12 +123,20 @@ class JobService {
     if (uid == null) throw Exception('User not authenticated');
 
     try {
-      await _db.collection('jobs').doc(jobId).update({
-        'status': JobStatus.cancelled.index,
-        'cancelledAt': FieldValue.serverTimestamp(),
-        'cancellationReason': reason,
-        'cancelledBy': uid,
-      });
+      await _db.collection('jobs').doc(jobId).update({'status': 'cancelled'});
+      try {
+        final jobDoc = await _db.collection('jobs').doc(jobId).get();
+        final jobTitle = jobDoc.data()?['title'] as String? ?? 'your job';
+        // notify job participants - simplistic: notify owner
+        await NotificationService().sendNotification(
+          userId: jobDoc.data()?['clientId'] ?? uid,
+          type: NotificationType.jobClosed,
+          title: 'Job cancelled',
+          message: 'Job "$jobTitle" was cancelled',
+          actionUrl: '/job/$jobId',
+          relatedJobId: jobId,
+        );
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to cancel job: $e');
     }
@@ -112,17 +151,35 @@ class JobService {
     try {
       final batch = _db.batch();
 
-      batch.update(_db.collection('jobs').doc(jobId), {
-        'status': JobStatus.onHold.index,
-      });
+      batch.update(_db.collection('jobs').doc(jobId), {'status': 'onHold'});
 
       batch.update(_db.collection('contracts').doc(contractId), {
-        'status': ContractStatus.paused.index,
-        'pausedAt': FieldValue.serverTimestamp(),
-        'pauseReason': reason,
+        'status': 'paused',
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       await batch.commit();
+      try {
+        final contractDoc = await _db
+            .collection('contracts')
+            .doc(contractId)
+            .get();
+        final clientId = contractDoc.data()?['clientId'] as String? ?? '';
+        final freelancerId =
+            contractDoc.data()?['freelancerId'] as String? ?? '';
+        final jobDoc = await _db.collection('jobs').doc(jobId).get();
+        final jobTitle = jobDoc.data()?['title'] as String? ?? 'your job';
+        if (clientId.isNotEmpty && freelancerId.isNotEmpty) {
+          await NotificationService().sendNotification(
+            userId: freelancerId,
+            type: NotificationType.messageReceived,
+            title: 'Job paused',
+            message: 'Job "$jobTitle" was paused',
+            actionUrl: '/job/$jobId',
+            relatedJobId: jobId,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to pause job: $e');
     }
@@ -136,16 +193,35 @@ class JobService {
     try {
       final batch = _db.batch();
 
-      batch.update(_db.collection('jobs').doc(jobId), {
-        'status': JobStatus.ongoing.index,
-      });
+      batch.update(_db.collection('jobs').doc(jobId), {'status': 'ongoing'});
 
       batch.update(_db.collection('contracts').doc(contractId), {
-        'status': ContractStatus.active.index,
-        'resumedAt': FieldValue.serverTimestamp(),
+        'status': 'active',
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       await batch.commit();
+      try {
+        final contractDoc = await _db
+            .collection('contracts')
+            .doc(contractId)
+            .get();
+        final clientId = contractDoc.data()?['clientId'] as String? ?? '';
+        final freelancerId =
+            contractDoc.data()?['freelancerId'] as String? ?? '';
+        final jobDoc = await _db.collection('jobs').doc(jobId).get();
+        final jobTitle = jobDoc.data()?['title'] as String? ?? 'your job';
+        if (clientId.isNotEmpty && freelancerId.isNotEmpty) {
+          await NotificationService().sendNotification(
+            userId: freelancerId,
+            type: NotificationType.jobStarted,
+            title: 'Job resumed',
+            message: 'Job "$jobTitle" was resumed',
+            actionUrl: '/job/$jobId',
+            relatedJobId: jobId,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to resume job: $e');
     }
@@ -172,14 +248,15 @@ class JobService {
         .snapshots()
         .map((snap) {
           final contracts = snap.docs.map((doc) => doc.data()).toList();
-          // Filter by status and sort in code
-          contracts.removeWhere(
-            (c) => c['status'] != ContractStatus.active.index,
-          );
+          // Filter by string status to match schema
+          contracts.removeWhere((c) {
+            final s = (c['status'] ?? '').toString().toLowerCase();
+            return s != 'active' && s != 'ongoing' && s != 'in_progress';
+          });
           contracts.sort(
             (a, b) =>
-                (b['startedAt'] as Timestamp?)?.compareTo(
-                  a['startedAt'] as Timestamp? ?? Timestamp.now(),
+                (b['createdAt'] as Timestamp?)?.compareTo(
+                  a['createdAt'] as Timestamp? ?? Timestamp.now(),
                 ) ??
                 0,
           );
@@ -198,14 +275,15 @@ class JobService {
         .snapshots()
         .map((snap) {
           final contracts = snap.docs.map((doc) => doc.data()).toList();
-          // Filter by status and sort in code
-          contracts.removeWhere(
-            (c) => c['status'] != ContractStatus.active.index,
-          );
+          // Filter by string status to match schema
+          contracts.removeWhere((c) {
+            final s = (c['status'] ?? '').toString().toLowerCase();
+            return s != 'active' && s != 'ongoing' && s != 'in_progress';
+          });
           contracts.sort(
             (a, b) =>
-                (b['startedAt'] as Timestamp?)?.compareTo(
-                  a['startedAt'] as Timestamp? ?? Timestamp.now(),
+                (b['createdAt'] as Timestamp?)?.compareTo(
+                  a['createdAt'] as Timestamp? ?? Timestamp.now(),
                 ) ??
                 0,
           );
@@ -295,7 +373,31 @@ class JobService {
             .toList(),
       });
 
-      // TODO: Process payment to freelancer
+      try {
+        final contractData = contractDoc.data() ?? {};
+        final freelancerId = contractData['freelancerId'] as String? ?? '';
+        final jobId = contractData['jobId'] as String? ?? '';
+        final amount = (milestone['amount'] as num?)?.toDouble() ?? 0.0;
+        if (freelancerId.isNotEmpty && amount > 0) {
+          final paymentService = PaymentService();
+          await paymentService.processJobPayment(
+            jobId: jobId,
+            freelancerId: freelancerId,
+            amount: amount,
+          );
+        }
+
+        // Notify parties about milestone release
+        final jobDoc = await _db.collection('jobs').doc(jobId).get();
+        final jobTitle = jobDoc.data()?['title'] as String? ?? 'your job';
+        if (freelancerId.isNotEmpty) {
+          await NotificationService().notifyPaymentReceived(
+            userId: freelancerId,
+            amount: amount,
+            jobTitle: jobTitle,
+          );
+        }
+      } catch (_) {}
     } catch (e) {
       throw Exception('Failed to release payment: $e');
     }

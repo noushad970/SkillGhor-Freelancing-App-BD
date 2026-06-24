@@ -28,6 +28,81 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
         elevation: 0,
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'Debug proposals',
+            icon: const Icon(Icons.bug_report),
+            onPressed: () async {
+              try {
+                final raw = await _proposalService
+                    .fetchRawProposalsForCurrentUser();
+                if (!mounted) return;
+                if (raw.isEmpty) {
+                  showDialog(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Debug Proposals'),
+                      content: const Text(
+                        'No raw proposals found for current user.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
+                showDialog(
+                  context: context,
+                  builder: (c) => AlertDialog(
+                    title: Text('Found ${raw.length} items'),
+                    content: SizedBox(
+                      width: double.maxFinite,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: raw.length,
+                        itemBuilder: (ctx, i) {
+                          final item = raw[i];
+                          final id = item['id'] ?? 'unknown';
+                          final data =
+                              item['data'] as Map<String, dynamic>? ?? {};
+                          return ListTile(
+                            title: Text(id.toString()),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('freelancerId: ${data['freelancerId']}'),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'parentJobId: ${item['parentJobId'] ?? data['jobId'] ?? 'none'}',
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Debug failed: $e')));
+              }
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -121,7 +196,10 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
 
   Widget _buildProposalCard(BuildContext context, Proposal proposal) {
     return FutureBuilder<Map<String, dynamic>>(
-      future: _proposalService.getProposalWithJob(proposal.id),
+      future: _proposalService.getProposalWithJob(
+        proposal.id,
+        parentJobId: proposal.jobId.isNotEmpty ? proposal.jobId : null,
+      ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Card(
@@ -157,6 +235,9 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
           }
         }
 
+        // If job was deleted or not found, show a readable card
+        final isJobMissing = jobData == null || jobData.isEmpty;
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: Padding(
@@ -173,7 +254,7 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            jobTitle,
+                            isJobMissing ? 'Job not available' : jobTitle,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -183,7 +264,9 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Job Status: ${jobStatus.toString().split('.').last.toUpperCase()}',
+                            isJobMissing
+                                ? 'Job no longer exists or was removed'
+                                : 'Job Status: ${jobStatus.toString().split('.').last.toUpperCase()}',
                             style: TextStyle(
                               fontSize: 12,
                               color: _getJobStatusColor(jobStatus),
@@ -510,16 +593,78 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
       context: context,
       isScrollControlled: true,
       builder: (context) => FutureBuilder<Map<String, dynamic>>(
-        future: _proposalService.getProposalWithJob(proposal.id),
+        // Prefer resolving from the known parentJobId when available to avoid ambiguous collectionGroup lookups
+        future: _proposalService.getProposalWithJob(
+          proposal.id,
+          parentJobId: proposal.jobId.isNotEmpty ? proposal.jobId : null,
+        ),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          // show loading state while waiting
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Padding(
               padding: EdgeInsets.all(20),
               child: Center(child: CircularProgressIndicator()),
             );
           }
 
-          final jobData = snapshot.data!['job'] as Map<String, dynamic>;
+          // show a friendly error if lookup failed
+          if (snapshot.hasError) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error, size: 48, color: Colors.red.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Failed to load proposal details',
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      snapshot.error.toString(),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // if no data found, show a message
+          if (!snapshot.hasData || snapshot.data == null) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 48,
+                      color: Colors.grey.shade600,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Proposal details not available'),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          // jobData may be null if job was deleted; treat as nullable
+          final jobData = snapshot.data!['job'] as Map<String, dynamic>?;
 
           return DraggableScrollableSheet(
             expand: false,
@@ -543,7 +688,9 @@ class _MyProposalsScreenState extends State<MyProposalsScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      jobData['title'] ?? 'Untitled Job',
+                      jobData == null
+                          ? 'Untitled Job'
+                          : (jobData['title'] ?? 'Untitled Job'),
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
