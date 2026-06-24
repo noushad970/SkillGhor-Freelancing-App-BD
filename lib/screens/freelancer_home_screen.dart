@@ -481,17 +481,17 @@ class FreelancerHomeScreen extends StatelessWidget {
             );
           },
         ),
-        _actionButton(
-          label: 'Active Contracts',
-          icon: Icons.handshake_outlined,
-          color: Colors.green,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ActiveContractsScreen()),
-            );
-          },
-        ),
+        // _actionButton(
+        //   label: 'Active Contracts',
+        //   icon: Icons.handshake_outlined,
+        //   color: Colors.green,
+        //   onTap: () {
+        //     Navigator.push(
+        //       context,
+        //       MaterialPageRoute(builder: (_) => const ActiveContractsScreen()),
+        //     );
+        //   },
+        // ),
         _actionButton(
           label: 'Earnings & Reports',
           icon: Icons.bar_chart,
