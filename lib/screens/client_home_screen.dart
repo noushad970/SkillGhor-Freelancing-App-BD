@@ -270,76 +270,590 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Quick Top-up button
+                          // Enhanced Top-up / Buy Connects button -> show modal bottom sheet
                           OutlinedButton.icon(
-                            onPressed: () async {
-                              final amountController = TextEditingController();
-                              final confirmed = await showDialog<bool>(
+                            onPressed: () {
+                              showModalBottomSheet<void>(
                                 context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Top-up Wallet'),
-                                  content: TextField(
-                                    controller: amountController,
-                                    keyboardType:
-                                        TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    decoration: const InputDecoration(
-                                      hintText: 'Amount (e.g. 500)',
-                                    ),
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(16),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(ctx, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: const Text('Top-up'),
-                                    ),
-                                  ],
                                 ),
-                              );
-                              if (confirmed != true) return;
-                              final amt =
-                                  double.tryParse(
-                                    amountController.text.trim(),
-                                  ) ??
-                                  0;
-                              if (amt <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Enter a valid amount'),
-                                  ),
-                                );
-                                return;
-                              }
+                                builder: (ctx) {
+                                  return StatefulBuilder(
+                                    builder: (ctx, setState) {
+                                      final amountController =
+                                          TextEditingController();
+                                      String mode =
+                                          'topup'; // 'topup' or 'connects'
+                                      double quickAmount = 500;
+                                      String paymentMethod =
+                                          'wallet'; // wallet/card/bank
+                                      double exchangeRate =
+                                          110; // BDT per USD (example)
+                                      int connects = 10;
+                                      const double pricePerConnectUSD = 0.5;
 
-                              // perform demo top-up
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (_) => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+                                      double parsedAmount() {
+                                        final c = amountController.text.trim();
+                                        final v = double.tryParse(c);
+                                        return v ?? quickAmount;
+                                      }
+
+                                      final usdForConnects =
+                                          connects * pricePerConnectUSD;
+                                      final localForConnects =
+                                          usdForConnects * exchangeRate;
+
+                                      Future<void> _doTopUp(double amt) async {
+                                        Navigator.of(ctx).pop();
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        );
+                                        try {
+                                          await PaymentService().topUpBalance(
+                                            amount: amt,
+                                          );
+                                          Navigator.of(context).pop();
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Wallet topped up'),
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          Navigator.of(context).pop();
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Top-up failed: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      Future<void> _buyConnectsTx(
+                                        int connectsToBuy,
+                                        double totalLocal,
+                                      ) async {
+                                        // Run a transaction: verify user's walletBalance and deduct then increment totalConnects
+                                        final uid = FirebaseAuth
+                                            .instance
+                                            .currentUser
+                                            ?.uid;
+                                        if (uid == null) return;
+                                        Navigator.of(ctx).pop();
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (_) => const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        );
+                                        final userRef = FirebaseFirestore
+                                            .instance
+                                            .collection('users')
+                                            .doc(uid);
+                                        final walletRef = FirebaseFirestore
+                                            .instance
+                                            .collection('wallets')
+                                            .doc(uid);
+                                        final paymentRef = FirebaseFirestore
+                                            .instance
+                                            .collection('payments')
+                                            .doc();
+                                        try {
+                                          await FirebaseFirestore.instance.runTransaction((
+                                            tx,
+                                          ) async {
+                                            final snap = await tx.get(userRef);
+                                            final currentBalance =
+                                                (snap.data()?['walletBalance'] ??
+                                                        snap.data()?['wallet'] ??
+                                                        0)
+                                                    as num;
+                                            final balance = currentBalance
+                                                .toDouble();
+                                            if (balance < totalLocal)
+                                              throw Exception(
+                                                'Insufficient wallet balance.',
+                                              );
+
+                                            // deduct wallet convenience field
+                                            tx.update(userRef, {
+                                              'walletBalance':
+                                                  FieldValue.increment(
+                                                    -totalLocal,
+                                                  ),
+                                              'totalConnects':
+                                                  FieldValue.increment(
+                                                    connectsToBuy,
+                                                  ),
+                                            });
+
+                                            // update wallet doc too
+                                            tx.set(walletRef, {
+                                              'balance': FieldValue.increment(
+                                                -totalLocal,
+                                              ),
+                                              'lastUpdated':
+                                                  FieldValue.serverTimestamp(),
+                                            }, SetOptions(merge: true));
+
+                                            // create a payment record for connects purchase
+                                            tx.set(paymentRef, {
+                                              'userId': uid,
+                                              'amount': totalLocal,
+                                              'method': paymentMethod,
+                                              'status': 'completed',
+                                              'type': 'connectsPurchase',
+                                              'connects': connectsToBuy,
+                                              'createdAt':
+                                                  FieldValue.serverTimestamp(),
+                                            });
+                                          });
+
+                                          Navigator.of(context).pop();
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Connects purchased successfully',
+                                              ),
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          Navigator.of(context).pop();
+                                          final err = e is Exception
+                                              ? e.toString()
+                                              : 'Purchase failed';
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(content: Text(err)),
+                                          );
+                                        }
+                                      }
+
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: MediaQuery.of(
+                                            ctx,
+                                          ).viewInsets.bottom,
+                                        ),
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  const Text(
+                                                    'Wallet / Connects',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  IconButton(
+                                                    icon: const Icon(
+                                                      Icons.close,
+                                                    ),
+                                                    onPressed: () =>
+                                                        Navigator.of(ctx).pop(),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+
+                                              // Mode toggle
+                                              Row(
+                                                children: [
+                                                  ChoiceChip(
+                                                    label: const Text(
+                                                      'Top-up Wallet',
+                                                    ),
+                                                    selected: mode == 'topup',
+                                                    onSelected: (v) => setState(
+                                                      () => mode = 'topup',
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  ChoiceChip(
+                                                    label: const Text(
+                                                      'Buy Connects',
+                                                    ),
+                                                    selected:
+                                                        mode == 'connects',
+                                                    onSelected: (v) => setState(
+                                                      () => mode = 'connects',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 12),
+
+                                              if (mode == 'topup') ...[
+                                                const Text('Quick amounts'),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    for (final a in [
+                                                      500.0,
+                                                      1000.0,
+                                                      2000.0,
+                                                    ])
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              right: 8.0,
+                                                            ),
+                                                        child: ElevatedButton(
+                                                          onPressed: () {
+                                                            amountController
+                                                                .text = a
+                                                                .toStringAsFixed(
+                                                                  0,
+                                                                );
+                                                            setState(() {});
+                                                          },
+                                                          style:
+                                                              ElevatedButton.styleFrom(
+                                                                backgroundColor:
+                                                                    Colors
+                                                                        .green
+                                                                        .shade600,
+                                                              ),
+                                                          child: Text(
+                                                            '৳${a.toStringAsFixed(0)}',
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                TextField(
+                                                  controller: amountController,
+                                                  keyboardType:
+                                                      const TextInputType.numberWithOptions(
+                                                        decimal: true,
+                                                      ),
+                                                  decoration:
+                                                      const InputDecoration(
+                                                        labelText:
+                                                            'Custom amount (BDT)',
+                                                      ),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                const Text('Payment method'),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    ChoiceChip(
+                                                      label: const Text(
+                                                        'Wallet',
+                                                      ),
+                                                      selected:
+                                                          paymentMethod ==
+                                                          'wallet',
+                                                      onSelected: (_) =>
+                                                          setState(
+                                                            () =>
+                                                                paymentMethod =
+                                                                    'wallet',
+                                                          ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    ChoiceChip(
+                                                      label: const Text('Card'),
+                                                      selected:
+                                                          paymentMethod ==
+                                                          'card',
+                                                      onSelected: (_) =>
+                                                          setState(
+                                                            () =>
+                                                                paymentMethod =
+                                                                    'card',
+                                                          ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    ChoiceChip(
+                                                      label: const Text('Bank'),
+                                                      selected:
+                                                          paymentMethod ==
+                                                          'bank',
+                                                      onSelected: (_) =>
+                                                          setState(
+                                                            () =>
+                                                                paymentMethod =
+                                                                    'bank',
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 16),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        onPressed: () {
+                                                          final amt =
+                                                              parsedAmount();
+                                                          if (amt <= 0) {
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                  'Enter a valid amount',
+                                                                ),
+                                                              ),
+                                                            );
+                                                            return;
+                                                          }
+                                                          _doTopUp(amt);
+                                                        },
+                                                        child: const Text(
+                                                          'Proceed to Top-up',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+
+                                              if (mode == 'connects') ...[
+                                                const Text(
+                                                  'Buy Connects (realistic pricing)',
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    const Text('Connects:'),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Slider(
+                                                        value: connects
+                                                            .toDouble(),
+                                                        min: 5,
+                                                        max: 200,
+                                                        divisions: 39,
+                                                        label: connects
+                                                            .toString(),
+                                                        onChanged: (v) =>
+                                                            setState(
+                                                              () => connects = v
+                                                                  .round(),
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(connects.toString()),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      'Price per connect: \$${pricePerConnectUSD.toStringAsFixed(2)}',
+                                                    ),
+                                                    Text(
+                                                      'Rate: ৳${exchangeRate.toStringAsFixed(0)}/\$1',
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      'Total (USD): \$${usdForConnects.toStringAsFixed(2)}',
+                                                    ),
+                                                    Text(
+                                                      'Total (BDT): ৳${localForConnects.toStringAsFixed(0)}',
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                const Text('Payment method'),
+                                                const SizedBox(height: 8),
+                                                Row(
+                                                  children: [
+                                                    ChoiceChip(
+                                                      label: const Text(
+                                                        'Wallet',
+                                                      ),
+                                                      selected:
+                                                          paymentMethod ==
+                                                          'wallet',
+                                                      onSelected: (_) =>
+                                                          setState(
+                                                            () =>
+                                                                paymentMethod =
+                                                                    'wallet',
+                                                          ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    ChoiceChip(
+                                                      label: const Text('Card'),
+                                                      selected:
+                                                          paymentMethod ==
+                                                          'card',
+                                                      onSelected: (_) =>
+                                                          setState(
+                                                            () =>
+                                                                paymentMethod =
+                                                                    'card',
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        onPressed: () async {
+                                                          // If paying by wallet, perform a transaction that deducts and increments connects
+                                                          if (paymentMethod ==
+                                                              'wallet') {
+                                                            await _buyConnectsTx(
+                                                              connects,
+                                                              localForConnects,
+                                                            );
+                                                            return;
+                                                          }
+                                                          // For card/bank: simulate by creating a pending payment (not implemented fully here)
+                                                          Navigator.of(
+                                                            ctx,
+                                                          ).pop();
+                                                          showDialog(
+                                                            context: context,
+                                                            barrierDismissible:
+                                                                false,
+                                                            builder: (_) =>
+                                                                const Center(
+                                                                  child:
+                                                                      CircularProgressIndicator(),
+                                                                ),
+                                                          );
+                                                          try {
+                                                            // Create a payment record as completed for demo purposes
+                                                            final uid =
+                                                                FirebaseAuth
+                                                                    .instance
+                                                                    .currentUser
+                                                                    ?.uid;
+                                                            if (uid == null)
+                                                              throw Exception(
+                                                                'Not signed in',
+                                                              );
+                                                            final paymentRef =
+                                                                FirebaseFirestore
+                                                                    .instance
+                                                                    .collection(
+                                                                      'payments',
+                                                                    )
+                                                                    .doc();
+                                                            await paymentRef.set({
+                                                              'userId': uid,
+                                                              'amount':
+                                                                  localForConnects,
+                                                              'method':
+                                                                  paymentMethod,
+                                                              'status':
+                                                                  'completed',
+                                                              'type':
+                                                                  'connectsPurchase',
+                                                              'connects':
+                                                                  connects,
+                                                              'createdAt':
+                                                                  FieldValue.serverTimestamp(),
+                                                            });
+                                                            // increment user's connects convenience field
+                                                            await FirebaseFirestore
+                                                                .instance
+                                                                .collection(
+                                                                  'users',
+                                                                )
+                                                                .doc(
+                                                                  FirebaseAuth
+                                                                      .instance
+                                                                      .currentUser!
+                                                                      .uid,
+                                                                )
+                                                                .update({
+                                                                  'totalConnects':
+                                                                      FieldValue.increment(
+                                                                        connects,
+                                                                      ),
+                                                                });
+                                                            Navigator.of(
+                                                              context,
+                                                            ).pop();
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              const SnackBar(
+                                                                content: Text(
+                                                                  'Connects purchased (simulated)',
+                                                                ),
+                                                              ),
+                                                            );
+                                                          } catch (e) {
+                                                            Navigator.of(
+                                                              context,
+                                                            ).pop();
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                  'Purchase failed: $e',
+                                                                ),
+                                                              ),
+                                                            );
+                                                          }
+                                                        },
+                                                        child: const Text(
+                                                          'Buy Connects',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                              const SizedBox(height: 12),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
                               );
-                              try {
-                                await PaymentService().topUpBalance(
-                                  amount: amt,
-                                );
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Wallet topped up'),
-                                  ),
-                                );
-                              } catch (e) {
-                                Navigator.of(context).pop();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Top-up failed: $e')),
-                                );
-                              }
                             },
                             icon: const Icon(
                               Icons.account_balance_wallet,
