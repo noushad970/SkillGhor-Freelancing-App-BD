@@ -28,14 +28,20 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   Future<void> _submit() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-    if (email.isEmpty || password.isEmpty) return _showMessage('Enter email and password');
-    if (!_isLogin && password != _confirmCtrl.text) return _showMessage('Passwords do not match');
+    if (email.isEmpty || password.isEmpty)
+      return _showMessage('Enter email and password');
+    if (!_isLogin && password != _confirmCtrl.text)
+      return _showMessage('Passwords do not match');
 
     setState(() => _loading = true);
     final auth = Provider.of<AuthService>(context, listen: false);
     try {
       if (_isLogin) {
         await auth.signInWithEmail(email: email, password: password);
+        if (!mounted) return;
+        _showMessage('Signed in successfully');
+        // Close the EmailAuthScreen so the root AuthGate StreamBuilder can react
+        Navigator.of(context).pop();
       } else {
         await auth.registerWithEmail(email: email, password: password);
         // After successful registration, navigate to role selection
@@ -87,7 +93,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                 TextField(
                   controller: _confirmCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Confirm Password'),
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm Password',
+                  ),
                 ),
               ],
               const SizedBox(height: 20),
@@ -106,21 +114,27 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                 onPressed: _loading
                     ? null
                     : () => setState(() {
-                          _isLogin = !_isLogin;
-                        }),
-                child: Text(_isLogin
-                    ? 'Don\'t have an account? Sign up'
-                    : 'Already have an account? Sign in'),
+                        _isLogin = !_isLogin;
+                      }),
+                child: Text(
+                  _isLogin
+                      ? 'Don\'t have an account? Sign up'
+                      : 'Already have an account? Sign in',
+                ),
               ),
               if (_isLogin) ...[
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () async {
                     final email = _emailCtrl.text.trim();
-                    if (email.isEmpty) return _showMessage('Enter your email to reset password');
+                    if (email.isEmpty)
+                      return _showMessage('Enter your email to reset password');
                     setState(() => _loading = true);
                     try {
-                      final auth = Provider.of<AuthService>(context, listen: false);
+                      final auth = Provider.of<AuthService>(
+                        context,
+                        listen: false,
+                      );
                       await auth.sendPasswordReset(email: email);
                       _showMessage('Password reset sent to $email');
                     } catch (e) {
@@ -131,7 +145,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                   },
                   child: const Text('Forgot password?'),
                 ),
-              ]
+              ],
             ],
           ),
         ),

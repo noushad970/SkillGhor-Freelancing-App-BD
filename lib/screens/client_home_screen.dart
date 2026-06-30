@@ -2,6 +2,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import 'sign_in_screen.dart';
 import 'client_edit_profile_screen.dart';
 import 'post_job_screen.dart';
 import 'applicant_list_screen.dart';
@@ -102,6 +105,44 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                 ? NetworkImage(user.photoURL!)
                 : null,
             child: user.photoURL == null ? const Icon(Icons.person) : null,
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sign out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sign out'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                try {
+                  await Provider.of<AuthService>(
+                    context,
+                    listen: false,
+                  ).signOut();
+                } catch (_) {}
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
           ),
           const SizedBox(width: 12),
         ],

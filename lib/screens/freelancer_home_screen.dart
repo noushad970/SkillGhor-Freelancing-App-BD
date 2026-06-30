@@ -2,6 +2,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import 'sign_in_screen.dart';
 import 'freelancer_edit_profile_screen.dart'; // Edit profile
 import 'find_jobs_screen.dart'; // Find Work
 import 'my_proposals_screen.dart'; // Proposals
@@ -92,6 +95,44 @@ class FreelancerHomeScreen extends StatelessWidget {
           ),
 
           const SizedBox(width: 12),
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sign out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Sign out'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                try {
+                  await Provider.of<AuthService>(
+                    context,
+                    listen: false,
+                  ).signOut();
+                } catch (_) {}
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                    (route) => false,
+                  );
+                }
+              }
+            },
+          ),
         ],
       ),
 

@@ -156,7 +156,11 @@ class AuthService extends ChangeNotifier {
         email: email,
         password: password,
       );
+      debugPrint('Signed in with email: ${cred.user?.email}');
       return cred;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Email sign-in FirebaseAuthException: ${e.code} ${e.message}');
+      throw Exception(e.message ?? 'Sign in failed: ${e.code}');
     } catch (e) {
       debugPrint('Email sign-in error: $e');
       rethrow;
@@ -212,18 +216,29 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // Cancel any user document listener to avoid lingering callbacks
+    try {
+      await _userDocSubscription?.cancel();
+    } catch (_) {}
+
     try {
       await _googleSignIn.signOut();
     } catch (e) {
       debugPrint('Google Sign-Out Error: $e');
+      // continue even if Google sign-out fails
     }
 
     try {
       await _auth.signOut();
     } catch (e) {
       debugPrint('Firebase Sign-Out Error: $e');
-      rethrow;
+      // Do not rethrow; ensure we emit signed-out state and let UI handle it
     }
+
+    // Emit a signed-out state so the UI reacts immediately
+    try {
+      _emit(AuthState(signedIn: false, hasRole: false, onboarded: false));
+    } catch (_) {}
   }
 
   @override

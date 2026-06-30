@@ -92,29 +92,6 @@ class SignInScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const EmailAuthScreen()),
-                    );
-                  },
-                  icon: const Icon(Icons.email),
-                  label: const Text('Sign in with Email'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.deepPurple,
-                    side: BorderSide(color: Colors.deepPurple.shade200),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
                       MaterialPageRoute(
                         builder: (_) => const AdminLoginScreen(),
                       ),
@@ -132,7 +109,32 @@ class SignInScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EmailAuthScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.email_outlined),
+                  label: const Text('Sign in with Email'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.deepPurple,
+                    side: BorderSide(color: Colors.deepPurple.shade100),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 20),
               Text(
                 'By continuing, you agree to our Terms & Privacy Policy',
                 textAlign: TextAlign.center,
