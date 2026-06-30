@@ -98,7 +98,7 @@ class _BuyConnectsScreenState extends State<BuyConnectsScreen> {
                             return Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Column(
@@ -139,7 +139,7 @@ class _BuyConnectsScreenState extends State<BuyConnectsScreen> {
                             return Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Column(
@@ -294,7 +294,7 @@ class _BuyConnectsScreenState extends State<BuyConnectsScreen> {
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(8),
-          color: isSelected ? Colors.green.withOpacity(0.05) : Colors.white,
+          color: isSelected ? Colors.green.withValues(alpha: 0.05) : Colors.white,
         ),
         child: Column(
           children: [

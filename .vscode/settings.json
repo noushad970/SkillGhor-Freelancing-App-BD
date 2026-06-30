@@ -3,5 +3,6 @@
         "allprojects",
         "buildscript"
     ],
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "cmake.sourceDirectory": "C:/Users/wi11/Desktop/SkillGhor-Freelancing-App-BD/linux"
 }

@@ -38,7 +38,7 @@ class Payment {
 
   factory Payment.fromMap(Map<String, dynamic> map, String id) {
     // status and type stored as strings in schema
-    String _parseString(dynamic raw, List<String> enumNames, int fallback) {
+    String parseString(dynamic raw, List<String> enumNames, int fallback) {
       if (raw is String && raw.isNotEmpty) return raw;
       if (raw is int && raw >= 0 && raw < enumNames.length) {
         return enumNames[raw];
@@ -59,14 +59,14 @@ class Payment {
       id: id,
       userId: map['userId'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
-      method: _parseString(map['method'], [
+      method: parseString(map['method'], [
         'wallet',
         'card',
         'bkash',
         'nagad',
       ], 0),
-      status: _parseString(map['status'], statusNames, 0),
-      type: _parseString(map['type'], typeNames, 0),
+      status: parseString(map['status'], statusNames, 0),
+      type: parseString(map['type'], typeNames, 0),
       jobId: map['jobId'],
       freelancerId: map['freelancerId'],
       note: map['note'],
@@ -368,8 +368,9 @@ class PaymentService {
       final data = paymentSnap.data() ?? {};
 
       final owner = data['userId'] as String? ?? '';
-      if (owner != uid)
+      if (owner != uid) {
         throw Exception('Not authorized to finalize this payment');
+      }
 
       final statusVal = data['status'];
       // status stored as string in schema

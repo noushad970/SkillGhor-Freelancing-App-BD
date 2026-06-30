@@ -169,8 +169,9 @@ class NotificationService {
               .map((doc) => AppNotification.fromMap(doc.data(), doc.id))
               .toList();
           list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          if (limit > 0 && list.length > limit)
+          if (limit > 0 && list.length > limit) {
             return list.take(limit).toList();
+          }
           return list;
         });
   }

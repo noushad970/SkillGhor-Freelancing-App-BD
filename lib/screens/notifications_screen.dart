@@ -114,8 +114,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 notification: notif,
                 onTap: () async {
                   await notificationService.markAsRead(notif.id);
-                  if (!mounted)
+                  if (!mounted) {
                     return; // avoid using context after widget disposed
+                  }
                   // Navigate based on actionUrl
                   if (notif.actionUrl != null) {
                     final url = notif.actionUrl!;
@@ -203,7 +204,7 @@ class NotificationTile extends StatelessWidget {
       ),
       onDismissed: (_) => onDismiss(),
       child: Material(
-        color: notification.read ? Colors.white : Colors.blue.withOpacity(0.05),
+        color: notification.read ? Colors.white : Colors.blue.withValues(alpha: 0.05),
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -212,7 +213,7 @@ class NotificationTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withValues(alpha: 0.2),
                   child: Icon(icon, color: color),
                 ),
                 const SizedBox(width: 12),

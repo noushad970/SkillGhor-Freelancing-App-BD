@@ -40,8 +40,9 @@ class HiredFreelancersScreen extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>? ?? {};
             final status = data['status'];
             if (status == null) return false;
-            if (status is int)
+            if (status is int) {
               return status == 0; // ContractStatus.active.index
+            }
             if (status is String) {
               final s = status.toLowerCase();
               return s == 'active' || s == 'ongoing' || s == 'in_progress';

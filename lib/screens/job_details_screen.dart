@@ -83,7 +83,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(status).withOpacity(0.2),
+                    color: _getStatusColor(status).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -186,7 +186,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                       .map(
                         (skill) => Chip(
                           label: Text(skill),
-                          backgroundColor: Colors.green.withOpacity(0.2),
+                          backgroundColor: Colors.green.withValues(alpha: 0.2),
                         ),
                       )
                       .toList(),
@@ -500,8 +500,8 @@ class MilestoneCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: status == 'released'
-                        ? Colors.green.withOpacity(0.2)
-                        : Colors.orange.withOpacity(0.2),
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : Colors.orange.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

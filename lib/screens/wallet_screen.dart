@@ -155,8 +155,8 @@ class WalletScreen extends StatelessWidget {
                                   return ListTile(
                                     leading: CircleAvatar(
                                       backgroundColor: isIncome
-                                          ? Colors.green.withOpacity(0.2)
-                                          : Colors.red.withOpacity(0.2),
+                                          ? Colors.green.withValues(alpha: 0.2)
+                                          : Colors.red.withValues(alpha: 0.2),
                                       child: Icon(
                                         isIncome
                                             ? Icons.arrow_downward
@@ -218,7 +218,7 @@ class WalletScreen extends StatelessWidget {
                                   return ListTile(
                                     leading: CircleAvatar(
                                       backgroundColor: Colors.orange
-                                          .withOpacity(0.2),
+                                          .withValues(alpha: 0.2),
                                       child: const Icon(
                                         Icons.money,
                                         color: Colors.orange,

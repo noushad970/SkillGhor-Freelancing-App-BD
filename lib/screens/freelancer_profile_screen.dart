@@ -82,7 +82,7 @@ class FreelancerProfileScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
+                                  color: Colors.black.withValues(alpha: 0.08),
                                   blurRadius: 10,
                                   offset: const Offset(0, 6),
                                 ),
@@ -182,7 +182,7 @@ class FreelancerProfileScreen extends StatelessWidget {
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(
-                                                  '${rating.toStringAsFixed(1)}',
+                                                  rating.toStringAsFixed(1),
                                                   style: const TextStyle(
                                                     color: Colors.white,
                                                     fontWeight: FontWeight.w600,
@@ -474,7 +474,7 @@ class FreelancerProfileScreen extends StatelessWidget {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: docs.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const Divider(height: 1),
                                 itemBuilder: (context, index) {
                                   final r =
@@ -507,8 +507,7 @@ class FreelancerProfileScreen extends StatelessWidget {
                                           'Client';
                                       final reviewerPhoto =
                                           (reviewerData['photoUrl']
-                                              as String?) ??
-                                          null;
+                                              as String?);
 
                                       return ListTile(
                                         leading: CircleAvatar(
@@ -622,7 +621,7 @@ class FreelancerProfileScreen extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8),
           ],
         ),
         child: Column(

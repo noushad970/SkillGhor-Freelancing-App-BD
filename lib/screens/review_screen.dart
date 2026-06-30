@@ -75,10 +75,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
       }
 
       if (revieweeId.isEmpty) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid review target')),
           );
+        }
         return;
       }
 

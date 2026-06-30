@@ -44,8 +44,9 @@ class Proposal {
     if (rawStatus is int) {
       int idx = rawStatus;
       if (idx < 0) idx = 0;
-      if (idx >= ProposalStatus.values.length)
+      if (idx >= ProposalStatus.values.length) {
         idx = ProposalStatus.values.length - 1;
+      }
       status = ProposalStatus.values[idx];
     } else if (rawStatus is String) {
       final key = rawStatus.toLowerCase();
@@ -122,9 +123,9 @@ class Proposal {
     // parse respondedAt
     DateTime? respondedAt;
     final rawResponded = data['respondedAt'] ?? data['responded_at'];
-    if (rawResponded is Timestamp)
+    if (rawResponded is Timestamp) {
       respondedAt = rawResponded.toDate();
-    else if (rawResponded is int)
+    } else if (rawResponded is int)
       respondedAt = DateTime.fromMillisecondsSinceEpoch(rawResponded);
     else if (rawResponded is String)
       respondedAt = DateTime.tryParse(rawResponded);
@@ -273,7 +274,7 @@ class ProposalService {
     }
 
     // helper to build a stable key for a document snapshot
-    String _makeKeyFromSnapshot(QueryDocumentSnapshot d) {
+    String makeKeyFromSnapshot(QueryDocumentSnapshot d) {
       final parentJobId = d.reference.parent.parent?.id;
       final data = d.data() as Map<String, dynamic>?;
       final jobIdFromData = data != null
@@ -300,7 +301,7 @@ class ProposalService {
                 list.add(
                   Proposal.fromMap(data, d.id, parentJobId: parentJobId),
                 );
-                keys.add(_makeKeyFromSnapshot(d));
+                keys.add(makeKeyFromSnapshot(d));
               }
               // replace existing entries from collectionGroup using composite keys
               mergeAndEmitWithKey(list, keys);
@@ -376,8 +377,9 @@ class ProposalService {
             .snapshots()
             .listen((snap) {
               for (final docChange in snap.docChanges) {
-                if (docChange.type == DocumentChangeType.added)
+                if (docChange.type == DocumentChangeType.added) {
                   subscribeToJobProposals(docChange.doc);
+                }
                 if (docChange.type == DocumentChangeType.removed) {
                   final id = docChange.doc.id;
                   jobProposalSubs.remove(id)?.cancel();
@@ -634,8 +636,9 @@ class ProposalService {
             .limit(1)
             .get();
         String? contractId;
-        if (createdContractSnap.docs.isNotEmpty)
+        if (createdContractSnap.docs.isNotEmpty) {
           contractId = createdContractSnap.docs.first.id;
+        }
 
         await NotificationService().notifyProposalApproved(
           jobId: jobId,
@@ -859,12 +862,13 @@ class ProposalService {
             .collectionGroup('proposals')
             .where('freelancerId', isEqualTo: uid)
             .get();
-        for (final d in cg.docs)
+        for (final d in cg.docs) {
           results.add({
             'id': d.id,
             'data': d.data(),
             'parentJobId': d.reference.parent.parent?.id,
           });
+        }
       } catch (_) {}
 
       // collectionGroup by doc id
@@ -873,12 +877,13 @@ class ProposalService {
             .collectionGroup('proposals')
             .where(FieldPath.documentId, isEqualTo: uid)
             .get();
-        for (final d in cg2.docs)
+        for (final d in cg2.docs) {
           results.add({
             'id': d.id,
             'data': d.data(),
             'parentJobId': d.reference.parent.parent?.id,
           });
+        }
       } catch (_) {}
 
       // jobs where applicant contains uid
@@ -890,8 +895,9 @@ class ProposalService {
         for (final j in jobs.docs) {
           try {
             final p = await j.reference.collection('proposals').doc(uid).get();
-            if (p.exists)
+            if (p.exists) {
               results.add({'id': p.id, 'data': p.data(), 'parentJobId': j.id});
+            }
           } catch (_) {}
 
           try {
@@ -899,8 +905,9 @@ class ProposalService {
                 .collection('proposals')
                 .where('freelancerId', isEqualTo: uid)
                 .get();
-            for (final d in p2.docs)
+            for (final d in p2.docs) {
               results.add({'id': d.id, 'data': d.data(), 'parentJobId': j.id});
+            }
           } catch (_) {}
         }
       } catch (_) {}
@@ -908,20 +915,22 @@ class ProposalService {
       // top-level collection
       try {
         final topDoc = await _db.collection('proposals').doc(uid).get();
-        if (topDoc.exists)
+        if (topDoc.exists) {
           results.add({
             'id': topDoc.id,
             'data': topDoc.data(),
             'parentJobId': null,
           });
+        }
       } catch (_) {}
       try {
         final topQuery = await _db
             .collection('proposals')
             .where('freelancerId', isEqualTo: uid)
             .get();
-        for (final d in topQuery.docs)
+        for (final d in topQuery.docs) {
           results.add({'id': d.id, 'data': d.data(), 'parentJobId': null});
+        }
       } catch (_) {}
     } catch (_) {}
 

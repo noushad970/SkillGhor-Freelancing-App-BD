@@ -179,7 +179,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.grey.withOpacity(.12),
+                            color: Colors.grey.withValues(alpha: .12),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -195,8 +195,8 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 24,
-                                  backgroundColor: primaryColor.withOpacity(
-                                    .12,
+                                  backgroundColor: primaryColor.withValues(
+                                    alpha: .12,
                                   ),
                                   child: const Icon(
                                     Icons.business,
@@ -235,7 +235,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                     vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: primaryColor.withOpacity(.1),
+                                    color: primaryColor.withValues(alpha: .1),
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                   child: Text(

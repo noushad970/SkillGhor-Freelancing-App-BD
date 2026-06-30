@@ -146,6 +146,52 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // Email / Password auth
+  Future<UserCredential> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return cred;
+    } catch (e) {
+      debugPrint('Email sign-in error: $e');
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> registerWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      // optionally send verification
+      try {
+        await cred.user?.sendEmailVerification();
+      } catch (_) {}
+      return cred;
+    } catch (e) {
+      debugPrint('Email registration error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> sendPasswordReset({required String email}) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      debugPrint('Password reset error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> setRole({
     required String role,
     Map<String, dynamic> extraFields = const {},

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'advanced_chat_screen.dart';
 
 class MessagesScreen extends StatelessWidget {
-  const MessagesScreen({Key? key}) : super(key: key);
+  const MessagesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -314,11 +314,11 @@ class _PeerNameText extends StatelessWidget {
   final TextStyle? style;
 
   const _PeerNameText({
-    Key? key,
+    super.key,
     required this.peerId,
     this.fallback,
     this.style,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -346,8 +346,7 @@ class _PeerNameText extends StatelessWidget {
 class _PeerAvatar extends StatelessWidget {
   final String peerId;
   final String? fallbackName;
-  const _PeerAvatar({Key? key, required this.peerId, this.fallbackName})
-    : super(key: key);
+  const _PeerAvatar({super.key, required this.peerId, this.fallbackName});
 
   @override
   Widget build(BuildContext context) {
