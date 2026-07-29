@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:skill_ghor/screens/client_home_screen.dart';
 import 'package:skill_ghor/screens/freelancer_home_screen.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
+import 'sign_in_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,9 +20,9 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Skill Ghor'),
-        backgroundColor: Colors.deepPurple.shade600,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 4,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -57,16 +59,7 @@ class HomeScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.deepPurple.shade600,
-                      Colors.deepPurple.shade800,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
+                decoration: BoxDecoration(gradient: AppColors.heroGradient),
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -176,20 +169,18 @@ class HomeScreen extends StatelessWidget {
   void _showSignOutDialog(BuildContext context, AuthService authService) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext ctx) {
         return AlertDialog(
           title: const Text('Sign Out'),
           content: const Text('Are you sure you want to sign out?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context);
+                Navigator.pop(ctx);
                 try {
                   await authService.signOut();
                 } catch (e) {
@@ -198,6 +189,14 @@ class HomeScreen extends StatelessWidget {
                       SnackBar(content: Text('Sign out failed: $e')),
                     );
                   }
+                  return;
+                }
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SignInScreen()),
+                    (route) => false,
+                  );
                 }
               },
               child: const Text(

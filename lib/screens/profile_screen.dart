@@ -110,19 +110,19 @@ class ProfileScreen extends StatelessWidget {
                 Row(
                   children: [
                     _statCard(
-                      title: 'totalConnects',
+                      title: 'Connects',
                       value: connects.toString(),
                       icon: Icons.vpn_key,
                     ),
                     const SizedBox(width: 12),
                     _statCard(
-                      title: 'totalProposals',
+                      title: 'Proposals',
                       value: proposals.toString(),
                       icon: Icons.send,
                     ),
                     const SizedBox(width: 12),
                     _statCard(
-                      title: isFreelancer ? 'totalEarnings' : 'totalSpent',
+                      title: isFreelancer ? 'Earnings' : 'Spent',
                       value:
                           '৳${(isFreelancer ? earnings : totalSpent).toStringAsFixed(0)}',
                       icon: Icons.account_balance_wallet,
@@ -474,15 +474,15 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _launch(String urlStr) async {
     String url = urlStr.trim();
-    
+
     // Add scheme if not present
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
     }
-    
+
     final uri = Uri.tryParse(url);
     if (uri == null) return;
-    
+
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {

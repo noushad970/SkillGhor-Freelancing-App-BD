@@ -84,7 +84,7 @@ class _BrowseJobsScreenState extends State<BrowseJobsScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('jobs')
-                  .where('status', isEqualTo: 0) // Only open jobs
+                  .where('status', isEqualTo: 'open') // Only open jobs
                   .where('clientId', isNotEqualTo: user.uid) // Exclude own jobs
                   .snapshots(),
               builder: (context, snapshot) {

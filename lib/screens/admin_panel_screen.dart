@@ -658,7 +658,9 @@ class _EditDocScreenState extends State<_EditDocScreen> {
 
   @override
   void dispose() {
-    for (final c in _controllers.values) c.dispose();
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 

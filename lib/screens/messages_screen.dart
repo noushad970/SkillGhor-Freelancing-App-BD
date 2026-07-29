@@ -44,7 +44,6 @@ class MessagesScreen extends StatelessWidget {
             Text("Messages", style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        actions: [IconButton(onPressed: () {}, icon: const Icon(Icons.search))],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -313,12 +312,7 @@ class _PeerNameText extends StatelessWidget {
   final String? fallback;
   final TextStyle? style;
 
-  const _PeerNameText({
-    super.key,
-    required this.peerId,
-    this.fallback,
-    this.style,
-  });
+  const _PeerNameText({required this.peerId, this.fallback, this.style});
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +340,7 @@ class _PeerNameText extends StatelessWidget {
 class _PeerAvatar extends StatelessWidget {
   final String peerId;
   final String? fallbackName;
-  const _PeerAvatar({super.key, required this.peerId, this.fallbackName});
+  const _PeerAvatar({required this.peerId, this.fallbackName});
 
   @override
   Widget build(BuildContext context) {

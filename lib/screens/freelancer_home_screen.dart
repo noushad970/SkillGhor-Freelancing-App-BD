@@ -1,16 +1,15 @@
-// lib/screens/freelancer_home_screen.dart
+﻿// lib/screens/freelancer_home_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'sign_in_screen.dart';
-import 'freelancer_edit_profile_screen.dart'; // Edit profile
 import 'find_jobs_screen.dart'; // Find Work
 import 'my_proposals_screen.dart'; // Proposals
 import 'messages_screen.dart'; // Messages
 import 'profile_screen.dart'; // Profile
-import 'active_contracts_screen.dart'; // Active Contracts
 import 'earnings_reports_screen.dart'; // Earnings
 import 'buy_connects_screen.dart'; // Buy Connects
 import 'apply_job_screen.dart';
@@ -24,12 +23,39 @@ class FreelancerHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: AppColors.background,
 
       // TOP HEADER (like Upwork)
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                gradient: AppColors.heroGradient,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Skill Ghor',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -237,149 +263,122 @@ class FreelancerHomeScreen extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const SizedBox(); // Or loading indicator
+          return const SizedBox(height: 140);
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'User';
-
         final completion = data['profileCompletion'] ?? 0;
-
         final isVerified = data['isVerified'] == true;
 
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return Container(
+          decoration: BoxDecoration(
+            gradient: AppColors.heroGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.20),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 35,
-                      backgroundImage: data['photoUrl'] != null
-                          ? NetworkImage(data['photoUrl'])
-                          : null,
-                      child: data['photoUrl'] == null
-                          ? const Icon(
-                              Icons.person,
-                              size: 40,
-                              color: Colors.green,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                isVerified
-                                    ? Icons.verified
-                                    : Icons.verified_user_outlined,
-                                color: isVerified ? Colors.blue : Colors.grey,
-                                size: 20,
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: LinearProgressIndicator(
-                                  value: completion / 100,
-                                  backgroundColor: Colors.grey[300],
-                                  valueColor: AlwaysStoppedAnimation(
-                                    completion >= 90
-                                        ? Colors.green
-                                        : Colors.orange,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$completion% Complete',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  image: data['photoUrl'] != null
+                      ? DecorationImage(
+                          image: NetworkImage(data['photoUrl']),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: data['photoUrl'] == null
+                    ? const Icon(
+                        Icons.person,
+                        size: 36,
+                        color: AppColors.primary,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const FreelancerEditProfileScreen(),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.edit, size: 18),
-                      label: const Text('Edit Profile'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        foregroundColor: Colors.white,
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          isVerified
+                              ? Icons.verified_rounded
+                              : Icons.verified_user_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isVerified
+                          ? 'Verified freelancer'
+                          : 'Complete your profile to attract clients',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        fontSize: 12,
                       ),
                     ),
-
-                    // Right side buttons: will wrap on small screens
-                    Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        SizedBox(
-                          height: 36,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const BuyConnectsScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.shopping_cart, size: 16),
-                            label: const Text('Buy Connects'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.green,
-                              side: BorderSide(color: Colors.green.shade300),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: (completion.clamp(0, 100)) / 100,
+                              minHeight: 6,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.30,
                               ),
-                              minimumSize: const Size(0, 36),
+                              valueColor: const AlwaysStoppedAnimation(
+                                Colors.white,
+                              ),
                             ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '$completion%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -397,76 +396,151 @@ class FreelancerHomeScreen extends StatelessWidget {
         if (!snapshot.hasData) return const SizedBox();
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
-        final connects = data['totalConnects'] ?? 20;
-        final earnings = data['totalEarnings'] ?? 0;
-        final proposals = data['totalProposals'] ?? 0;
+        final int connects =
+            (data['totalConnects'] ?? data['connects'] ?? 0) is int
+            ? (data['totalConnects'] ?? data['connects'] ?? 0) as int
+            : int.tryParse(
+                    (data['totalConnects'] ?? data['connects'] ?? '0')
+                        .toString(),
+                  ) ??
+                  0;
+        final num earnings = data['totalEarnings'] ?? 0;
+        final int proposals =
+            (data['totalProposals'] ?? data['proposalsCount'] ?? 0) is int
+            ? (data['totalProposals'] ?? data['proposalsCount'] ?? 0) as int
+            : int.tryParse(
+                    (data['totalProposals'] ?? data['proposalsCount'] ?? '0')
+                        .toString(),
+                  ) ??
+                  0;
 
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                _buildStatCard(
-                  "totalConnects",
-                  connects.toString(),
-                  Icons.vpn_key,
-                ),
+                _buildStatCard("Connects", connects.toString(), Icons.vpn_key),
+                const SizedBox(width: 12),
+                _buildStatCard("Proposals", proposals.toString(), Icons.send),
                 const SizedBox(width: 12),
                 _buildStatCard(
-                  "totalProposals",
-                  proposals.toString(),
-                  Icons.send,
-                ),
-                const SizedBox(width: 12),
-                _buildStatCard(
-                  "totalEarnings",
+                  "Earnings",
                   "৳${earnings.toStringAsFixed(0)}",
                   Icons.account_balance_wallet,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            if (connects < 10) // Show buy button if low on connects
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const BuyConnectsScreen(),
+            const SizedBox(height: 14),
+            // Always show a Buy Connects affordance: highlighted when low, muted when healthy.
+            InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BuyConnectsScreen()),
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: connects < 10
+                      ? AppColors.warning.withValues(alpha: 0.12)
+                      : AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: connects < 10
+                        ? AppColors.warning
+                        : AppColors.primary,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.shopping_cart_outlined,
+                      size: 18,
+                      color: connects < 10
+                          ? AppColors.warning
+                          : AppColors.primary,
                     ),
-                  );
-                },
-                child: const Text('Buy More Connects'),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        connects < 10
+                            ? 'Low on Connects — Top up to keep proposing'
+                            : 'Buy more Connects',
+                        style: TextStyle(
+                          color: connects < 10
+                              ? AppColors.warning
+                              : AppColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: connects < 10
+                          ? AppColors.warning
+                          : AppColors.primary,
+                    ),
+                  ],
+                ),
               ),
+            ),
           ],
         );
       },
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon) {
+  Widget _buildStatCard(String label, String value, IconData icon) {
     return Expanded(
-      child: Card(
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            children: [
-              Icon(icon, size: 28, color: Colors.green.shade600),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.outline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
               ),
-              Text(
-                title,
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                textAlign: TextAlign.center,
+              child: Icon(icon, color: AppColors.primary, size: 18),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -481,7 +555,7 @@ class FreelancerHomeScreen extends StatelessWidget {
         _actionButton(
           label: 'Matched Jobs',
           icon: Icons.auto_awesome,
-          color: Colors.purple,
+          color: AppColors.primary,
           onTap: () {
             Navigator.push(
               context,

@@ -96,10 +96,10 @@ class _FreelancerEditProfileScreenState
 
       // Calculate dynamic profile completion
       int completedFields = 0;
-      final totalFields = 10; // Adjust as needed
+      final totalFields = 11; // Matches max possible weighted total
       if (fullName.isNotEmpty) completedFields++;
       if (username.isNotEmpty) completedFields++;
-      if (country != null) completedFields++;
+      if (country != null && country!.isNotEmpty) completedFields++;
       if (skills.length >= 5) completedFields += 2; // Extra weight for skills
       if (bio.length >= 100) completedFields += 2;
       if (languages.isNotEmpty) completedFields++;
@@ -108,7 +108,9 @@ class _FreelancerEditProfileScreenState
         completedFields++;
       }
 
-      final completionPercent = (completedFields / totalFields * 100).round();
+      final completionPercent = (completedFields / totalFields * 100)
+          .clamp(0, 100)
+          .round();
 
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'name': fullName,
@@ -145,7 +147,7 @@ class _FreelancerEditProfileScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Freelancer Profile - SkillGhor'),
+        title: const Text('Edit Freelancer Profile - Skill Ghor'),
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
       ),
@@ -186,7 +188,9 @@ class _FreelancerEditProfileScreenState
 
               // Country
               DropdownButtonFormField<String>(
-                initialValue: country,
+                initialValue: country != null && _countries.contains(country)
+                    ? country
+                    : null,
                 decoration: const InputDecoration(labelText: 'Country *'),
                 items: _countries
                     .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -307,8 +311,10 @@ class _FreelancerEditProfileScreenState
               ),
               ...education.map(
                 (e) => ListTile(
-                  title: Text(e['degree'] ?? ''),
-                  subtitle: Text('${e['school']} - ${e['year']}'),
+                  title: Text(e['degree']?.toString() ?? ''),
+                  subtitle: Text(
+                    '${e['school'] ?? 'Unknown school'} - ${e['year'] ?? 'Unknown year'}',
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     onPressed: () => setState(() => education.remove(e)),

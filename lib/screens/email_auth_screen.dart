@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../theme/app_theme.dart';
 import 'role_selection_screen.dart';
 
 class EmailAuthScreen extends StatefulWidget {
@@ -28,10 +29,12 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
   Future<void> _submit() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-    if (email.isEmpty || password.isEmpty)
+    if (email.isEmpty || password.isEmpty) {
       return _showMessage('Enter email and password');
-    if (!_isLogin && password != _confirmCtrl.text)
+    }
+    if (!_isLogin && password != _confirmCtrl.text) {
       return _showMessage('Passwords do not match');
+    }
 
     setState(() => _loading = true);
     final auth = Provider.of<AuthService>(context, listen: false);
@@ -69,7 +72,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isLogin ? 'Sign in with Email' : 'Sign up'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primary,
       ),
       body: SafeArea(
         child: Padding(
@@ -127,8 +130,9 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
                 TextButton(
                   onPressed: () async {
                     final email = _emailCtrl.text.trim();
-                    if (email.isEmpty)
+                    if (email.isEmpty) {
                       return _showMessage('Enter your email to reset password');
+                    }
                     setState(() => _loading = true);
                     try {
                       final auth = Provider.of<AuthService>(

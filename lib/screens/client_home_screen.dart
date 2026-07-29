@@ -7,7 +7,7 @@ import '../services/auth_service.dart';
 import 'sign_in_screen.dart';
 import 'client_edit_profile_screen.dart';
 import 'post_job_screen.dart';
-import 'applicant_list_screen.dart';
+import 'notifications_screen.dart';
 import 'messages_screen.dart';
 import 'my_jobs_screen.dart';
 import 'hired_freelancers_screen.dart';
@@ -44,7 +44,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'SkillGhor',
+          'Skill Ghor',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         actions: [
@@ -67,7 +67,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const ApplicantListScreen(),
+                        builder: (_) => const NotificationsScreen(),
                       ),
                     ),
                   ),
@@ -348,7 +348,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                       final localForConnects =
                                           usdForConnects * exchangeRate;
 
-                                      Future<void> _doTopUp(double amt) async {
+                                      Future<void> doTopUp(double amt) async {
                                         Navigator.of(ctx).pop();
                                         showDialog(
                                           context: context,
@@ -383,7 +383,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                         }
                                       }
 
-                                      Future<void> _buyConnectsTx(
+                                      Future<void> buyConnectsTx(
                                         int connectsToBuy,
                                         double totalLocal,
                                       ) async {
@@ -425,10 +425,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                                     as num;
                                             final balance = currentBalance
                                                 .toDouble();
-                                            if (balance < totalLocal)
+                                            if (balance < totalLocal) {
                                               throw Exception(
                                                 'Insufficient wallet balance.',
                                               );
+                                            }
 
                                             // deduct wallet convenience field
                                             tx.update(userRef, {
@@ -669,7 +670,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                                             );
                                                             return;
                                                           }
-                                                          _doTopUp(amt);
+                                                          doTopUp(amt);
                                                         },
                                                         child: const Text(
                                                           'Proceed to Top-up',
@@ -780,7 +781,7 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                                           // If paying by wallet, perform a transaction that deducts and increments connects
                                                           if (paymentMethod ==
                                                               'wallet') {
-                                                            await _buyConnectsTx(
+                                                            await buyConnectsTx(
                                                               connects,
                                                               localForConnects,
                                                             );
@@ -807,10 +808,11 @@ class _ClientHomeScreenState extends State<ClientHomeScreen> {
                                                                     .instance
                                                                     .currentUser
                                                                     ?.uid;
-                                                            if (uid == null)
+                                                            if (uid == null) {
                                                               throw Exception(
                                                                 'Not signed in',
                                                               );
+                                                            }
                                                             final paymentRef =
                                                                 FirebaseFirestore
                                                                     .instance

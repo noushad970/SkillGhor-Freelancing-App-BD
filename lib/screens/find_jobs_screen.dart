@@ -320,8 +320,9 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                                   );
 
                                               final connects =
-                                                  userSnap
-                                                      .data()?['connects'] ??
+                                                  (userSnap.data()?['totalConnects']
+                                                          as num?)
+                                                      ?.toInt() ??
                                                   0;
 
                                               if (connects < 1) {
@@ -345,7 +346,7 @@ class _FindJobsScreenState extends State<FindJobsScreen> {
                                                     .collection('users')
                                                     .doc(user.uid),
                                                 {
-                                                  'connects':
+                                                  'totalConnects':
                                                       FieldValue.increment(-1),
                                                 },
                                               );

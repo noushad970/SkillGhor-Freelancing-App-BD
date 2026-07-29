@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'wallet_screen.dart';
 
 class EarningsReportsScreen extends StatelessWidget {
   const EarningsReportsScreen({super.key});
@@ -147,8 +148,12 @@ class EarningsReportsScreen extends StatelessWidget {
                           const Spacer(),
                           TextButton(
                             onPressed: () {
-                              // navigate to withdrawal / wallet screen if exists
-                              Navigator.pushNamed(context, '/wallet');
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const WalletScreen(),
+                                ),
+                              );
                             },
                             child: const Text('Manage'),
                           ),

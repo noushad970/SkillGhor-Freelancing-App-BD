@@ -1,4 +1,5 @@
 // lib/screens/job_applicants_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/proposal_service.dart';
 
@@ -370,13 +371,19 @@ class _JobApplicantsScreenState extends State<JobApplicantsScreen> {
 
   Future<Map<String, dynamic>> _getFreelancerInfo(String freelancerId) async {
     try {
-      // In a real app, you'd fetch this from Firestore
-      // For now, returning dummy data
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(freelancerId)
+          .get();
+      if (!userDoc.exists) {
+        return {'name': 'Unknown', 'username': 'unknown'};
+      }
+      final data = userDoc.data() ?? {};
       return {
-        'name': 'Freelancer Name',
-        'username': 'freelancer_name',
-        'rating': 4.5,
-        'totalReviews': 12,
+        'name': data['name'] ?? 'Unknown Freelancer',
+        'username': data['username'] ?? 'unknown',
+        'rating': (data['rating'] as num?)?.toDouble() ?? 0.0,
+        'totalReviews': (data['totalReviews'] as num?)?.toInt() ?? 0,
       };
     } catch (e) {
       return {'name': 'Unknown', 'username': 'unknown'};

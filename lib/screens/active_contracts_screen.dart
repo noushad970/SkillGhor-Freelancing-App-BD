@@ -1,355 +1,580 @@
-// lib/screens/active_contracts_screen.dart
+﻿// lib/screens/active_contracts_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'advanced_chat_screen.dart';
 import 'job_details_screen.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 
-class ActiveContractsScreen extends StatelessWidget {
-  final String? initialContractId;
+class ActiveContractsScreen extends StatefulWidget {
+  const ActiveContractsScreen({super.key});
 
-  const ActiveContractsScreen({super.key, this.initialContractId});
+  @override
+  State<ActiveContractsScreen> createState() => _ActiveContractsScreenState();
+}
+
+class _ActiveContractsScreenState extends State<ActiveContractsScreen> {
+  String _formatAmount(dynamic raw) {
+    if (raw == null) return '0';
+    final n = raw is num
+        ? raw.toDouble()
+        : double.tryParse(raw.toString()) ?? 0.0;
+    return n.toStringAsFixed(0);
+  }
+
+  Future<void> _markContractComplete(
+    BuildContext context,
+    DocumentReference contractRef,
+    Map<String, dynamic> contract,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final amount = _formatAmount(contract['amount'] ?? contract['budget'] ?? 0);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark contract as complete?'),
+        content: Text(
+          'This will request completion of your work on "${contract['jobTitle'] ?? 'this job'}". The client will need to approve and release the payment of ৳$amount.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Request completion'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (!mounted) return;
+
+    try {
+      await contractRef.update({
+        'completedByFreelancer': true,
+        'freelancerCompletedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'status': 'awaiting_review',
+      });
+
+      final clientId = contract['clientId']?.toString();
+      if (clientId != null && clientId.isNotEmpty) {
+        try {
+          await NotificationService().sendNotification(
+            userId: clientId,
+            type: NotificationType.contractCompleted,
+            title: 'Freelancer requested completion',
+            message:
+                '"${contract['jobTitle'] ?? 'Your job'}" is marked complete and waiting for your approval to release payment.',
+            actionUrl: '/contracts/${contractRef.id}',
+            relatedJobId: contract['jobId']?.toString(),
+          );
+        } catch (_) {}
+      }
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Completion requested — waiting for client finalization',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser!;
-
-    if (initialContractId != null && initialContractId!.isNotEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Contract')),
-        body: _buildSingleContractView(context, initialContractId!),
-      );
-    }
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Active Contracts')),
+      backgroundColor: AppColors.background,
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('contracts')
-            .where('freelancerId', isEqualTo: user.uid)
+            .where('freelancerId', isEqualTo: uid)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const _LoadingShell();
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No active contracts'));
-          }
-
-          final raw = snapshot.data!.docs;
-
-          final contracts = raw.where((doc) {
-            final data = doc.data() as Map<String, dynamic>? ?? {};
-            final status = data['status'];
-            if (status == null) return false;
-            if (status is int) return status == 0;
-            if (status is String) {
-              final s = status.toLowerCase();
-              return s == 'active' || s == 'ongoing' || s == 'in_progress';
+          final raw = snapshot.data?.docs ?? const [];
+          // Keep contracts that are in any non-terminal phase. Map numeric
+          // indexes to friendly labels.
+          bool isActive(dynamic s) {
+            if (s == null) return false;
+            if (s is int) return s == 0; // 0 = active
+            if (s is String) {
+              final v = s.toLowerCase();
+              return v == 'active' ||
+                  v == 'ongoing' ||
+                  v == 'in_progress' ||
+                  v == 'in progress' ||
+                  v == 'awaiting_review' ||
+                  v == 'awaiting review' ||
+                  v == 'awaiting_release';
             }
             return false;
-          }).toList();
-
-          if (contracts.isEmpty) {
-            return const Center(child: Text('No active contracts'));
           }
 
-          return ListView.builder(
-            itemCount: contracts.length,
-            itemBuilder: (context, index) =>
-                _buildContractCard(context, contracts[index]),
+          final contracts = raw.where((d) {
+            final data = d.data() as Map<String, dynamic>? ?? {};
+            return isActive(data['status']);
+          }).toList();
+
+          // Stats
+          final pendingCount = contracts.where((d) {
+            final data = d.data() as Map<String, dynamic>? ?? {};
+            final s = data['status'];
+            final sStr = s is String
+                ? s.toLowerCase()
+                : (s is int && s == 0 ? 'active' : '');
+            return sStr == 'awaiting_review' || sStr == 'awaiting review';
+          }).length;
+
+          final inProgressCount = contracts.length - pendingCount;
+
+          double totalEarnings = 0;
+          for (final d in contracts) {
+            final data = d.data() as Map<String, dynamic>? ?? {};
+            final raw = data['amount'] ?? data['budget'] ?? 0;
+            totalEarnings += raw is num
+                ? raw.toDouble()
+                : double.tryParse(raw.toString()) ?? 0.0;
+          }
+
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _ActiveHero(
+                  count: contracts.length,
+                  inProgress: inProgressCount,
+                  pending: pendingCount,
+                  earnings: totalEarnings.toStringAsFixed(0),
+                ),
+              ),
+              if (contracts.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyState(
+                    icon: Icons.handshake_outlined,
+                    title: 'No active contracts yet',
+                    subtitle:
+                        'When a client accepts your proposal, the contract will appear here so you can track progress and earnings.',
+                    action: ElevatedButton.icon(
+                      icon: const Icon(Icons.search),
+                      label: const Text('Browse jobs'),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  sliver: SliverList.separated(
+                    itemCount: contracts.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (context, idx) {
+                      final c = contracts[idx];
+                      final cData = c.data() as Map<String, dynamic>;
+                      return _ContractCard(
+                        contractDoc: c,
+                        contractData: cData,
+                        onComplete: () =>
+                            _markContractComplete(context, c.reference, cData),
+                      );
+                    },
+                  ),
+                ),
+            ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildSingleContractView(BuildContext context, String contractId) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('contracts')
-          .doc(contractId)
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const Center(child: Text('Contract not found'));
-        }
-        return _buildContractCard(context, snapshot.data!);
-      },
+class _LoadingShell extends StatelessWidget {
+  const _LoadingShell();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GradientHeader(
+          height: 168,
+          padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Text(
+                'Active Contracts',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Loading your work...',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        const Expanded(child: Center(child: CircularProgressIndicator())),
+      ],
     );
   }
+}
 
-  Widget _buildContractCard(
-    BuildContext context,
-    DocumentSnapshot contractDoc,
-  ) {
-    final contract = contractDoc.data() as Map<String, dynamic>? ?? {};
-    final clientId = contract['clientId'] as String? ?? '';
-    final jobId = contract['jobId'] as String? ?? '';
-    final statusIdx = (contract['status'] is int)
-        ? contract['status'] as int
-        : 0;
-    final status = [
-      'active',
-      'completed',
-      'cancelled',
-      'paused',
-    ][statusIdx.clamp(0, 3)];
-    final createdAt = contract['createdAt'] as Timestamp?;
-    final updatedAt = contract['updatedAt'] as Timestamp?;
-    final amount = contract['amount'] ?? contract['budget'] ?? 0;
-    final progress = (contract['progress'] ?? 0).toDouble();
+class _ActiveHero extends StatelessWidget {
+  final int count;
+  final int inProgress;
+  final int pending;
+  final String earnings;
+  const _ActiveHero({
+    required this.count,
+    required this.inProgress,
+    required this.pending,
+    required this.earnings,
+  });
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(clientId)
-          .get(),
-      builder: (context, clientSnap) {
-        final clientData =
-            clientSnap.data?.data() as Map<String, dynamic>? ?? {};
-        final clientName = (clientData['name'] as String?) ?? 'Client';
-        final clientPhoto = clientData['photoUrl'] as String?;
-
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundImage: clientPhoto != null
-                          ? NetworkImage(clientPhoto)
-                          : null,
-                      child: clientPhoto == null
-                          ? const Icon(Icons.person)
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            contract['jobTitle'] ?? 'Untitled',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Client: $clientName',
-                            style: TextStyle(color: Colors.grey[700]),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: status == 'active'
-                            ? Colors.green.shade50
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          color: status == 'active'
-                              ? Colors.green.shade800
-                              : Colors.grey.shade800,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (progress > 0) ...[
-                  LinearProgressIndicator(
-                    value: (progress.clamp(0, 100)) / 100,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation(Colors.green.shade600),
+  @override
+  Widget build(BuildContext context) {
+    return GradientHeader(
+      height: 240,
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Active Contracts',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${progress.toStringAsFixed(0)}% Complete',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                Row(
-                  children: [
-                    if (createdAt != null)
-                      Text(
-                        'Started: ${createdAt.toDate().toLocal().toString().split(' ')[0]}',
-                      ),
-                    const SizedBox(width: 12),
-                    if (updatedAt != null)
-                      Text(
-                        'Updated: ${updatedAt.toDate().toLocal().toString().split(' ')[0]}',
-                      ),
-                    const Spacer(),
-                    Text(
-                      '৳${(amount is num ? amount.toDouble() : double.tryParse(amount.toString()) ?? 0).toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  contract['summary'] ?? contract['description'] ?? '',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey[700]),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AdvancedChatScreen(
-                                otherUserId: clientId,
-                                otherUserName: clientName,
-                                jobId: jobId,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.message, size: 16),
-                        label: const Text('Message'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        if (jobId.isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => JobDetailsScreen(
-                                jobId: jobId,
-                                isClient: false,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: const Text('View Job'),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildCompletionButton(context, contractDoc, contract),
-                  ],
-                ),
-              ],
+              ),
+              PillBadge(
+                label: '$count total',
+                color: Colors.white,
+                icon: Icons.work_outline,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            count == 0
+                ? 'No active work right now'
+                : 'Track progress, earnings and messages in one place',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 13,
             ),
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: StatCard(
+                  title: 'In progress',
+                  value: '$inProgress',
+                  icon: Icons.play_circle_outline,
+                  accent: AppColors.info,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: StatCard(
+                  title: 'Awaiting',
+                  value: '$pending',
+                  icon: Icons.hourglass_top,
+                  accent: AppColors.accent,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: StatCard(
+                  title: 'Earnings',
+                  value: '৳$earnings',
+                  icon: Icons.payments_outlined,
+                  accent: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ContractCard extends StatelessWidget {
+  final DocumentSnapshot contractDoc;
+  final Map<String, dynamic> contractData;
+  final VoidCallback onComplete;
+
+  const _ContractCard({
+    required this.contractDoc,
+    required this.contractData,
+    required this.onComplete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final jobTitle = (contractData['jobTitle'] as String?) ?? 'Untitled job';
+    final jobId = (contractData['jobId'] as String?) ?? '';
+    final clientId = (contractData['clientId'] as String?) ?? '';
+    final progress = ((contractData['progress'] ?? 0) as num).toDouble();
+    final deadline = contractData['deadline'];
+    final amountRaw = contractData['amount'] ?? contractData['budget'] ?? 0;
+    final amount = amountRaw is num
+        ? amountRaw.toDouble()
+        : double.tryParse(amountRaw.toString()) ?? 0.0;
+
+    final status = contractData['status'];
+    final awaitingReview = status is String
+        ? (status.toLowerCase() == 'awaiting_review' ||
+              status.toLowerCase() == 'awaiting review')
+        : false;
+    final inProgress = status is int
+        ? status == 0
+        : (status is String &&
+              (status.toLowerCase() == 'active' ||
+                  status.toLowerCase() == 'in_progress' ||
+                  status.toLowerCase() == 'ongoing'));
+
+    final pillColor = awaitingReview
+        ? AppColors.warning
+        : (inProgress ? AppColors.success : AppColors.info);
+    final pillLabel = awaitingReview
+        ? 'Awaiting client'
+        : (inProgress ? 'In progress' : 'Active');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  jobTitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              PillBadge(
+                label: pillLabel,
+                color: pillColor,
+                icon: awaitingReview
+                    ? Icons.hourglass_top
+                    : Icons.check_circle_outline,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FutureBuilder<DocumentSnapshot>(
+            future: clientId.isEmpty
+                ? null
+                : FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(clientId)
+                      .get(),
+            builder: (context, snap) {
+              final name =
+                  (snap.data?.data() as Map<String, dynamic>? ?? {})['name']
+                      as String? ??
+                  'Client';
+              return Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    child: const Icon(
+                      Icons.person,
+                      size: 16,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'with $name',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '৳${amount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                _formatDeadline(deadline),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.update, size: 14, color: AppColors.textMuted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _formatLastUpdate(contractDoc),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: (progress.clamp(0, 100)) / 100,
+              backgroundColor: AppColors.outline,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                  label: const Text('Message'),
+                  onPressed: () async {
+                    final clientSnap = clientId.isEmpty
+                        ? null
+                        : await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(clientId)
+                              .get();
+                    final name =
+                        ((clientSnap?.data() ??
+                                const <String, dynamic>{})['name'])
+                            as String? ??
+                        'Client';
+                    if (!context.mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdvancedChatScreen(
+                          otherUserId: clientId,
+                          otherUserName: name,
+                          jobId: jobId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  label: const Text('View job'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            JobDetailsScreen(jobId: jobId, isClient: false),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: Icon(
+                awaitingReview
+                    ? Icons.hourglass_top
+                    : Icons.check_circle_outline,
+                size: 16,
+              ),
+              label: Text(
+                awaitingReview
+                    ? 'Awaiting client approval'
+                    : 'Mark as complete',
+              ),
+              onPressed: awaitingReview || !inProgress ? null : onComplete,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCompletionButton(
-    BuildContext context,
-    DocumentSnapshot contractDoc,
-    Map<String, dynamic> contract,
-  ) {
-    final completedByFreelancer = contract['completedByFreelancer'] == true;
-    final completedByClient = contract['completedByClient'] == true;
-    final completionRequestedAt =
-        contract['completionRequestedAt'] as Timestamp?;
-    final completionReviewedAt = contract['completionReviewedAt'] as Timestamp?;
-
-    if (completedByClient) {
-      return OutlinedButton.icon(
-        onPressed: null,
-        icon: const Icon(Icons.done_all, size: 16),
-        label: Text(
-          'Client marked completed${completionReviewedAt != null ? ' (${completionReviewedAt.toDate().toLocal().toString().split(' ')[0]})' : ''}',
-        ),
-      );
+  String _formatDeadline(dynamic raw) {
+    if (raw is Timestamp) {
+      final dt = raw.toDate();
+      return 'Due ${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
     }
+    return 'No deadline set';
+  }
 
-    if (completedByFreelancer) {
-      return OutlinedButton.icon(
-        onPressed: null,
-        icon: const Icon(Icons.hourglass_top, size: 16),
-        label: Text(
-          'Awaiting Client Finalization${completionRequestedAt != null ? ' (${completionRequestedAt.toDate().toLocal().toString().split(' ')[0]})' : ''}',
-        ),
-      );
+  String _formatLastUpdate(DocumentSnapshot doc) {
+    final raw = (doc.data() as Map<String, dynamic>? ?? {})['updatedAt'];
+    if (raw is Timestamp) {
+      final dt = raw.toDate();
+      final days = DateTime.now().difference(dt).inDays;
+      if (days <= 0) return 'Updated today';
+      if (days == 1) return 'Updated 1 day ago';
+      return 'Updated $days days ago';
     }
-
-    return OutlinedButton.icon(
-      onPressed: () async {
-        try {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const Center(child: CircularProgressIndicator()),
-          );
-
-          await contractDoc.reference.update({
-            'completedByFreelancer': true,
-            'completionRequestedAt': Timestamp.now(),
-            'updatedAt': Timestamp.now(),
-          });
-
-          try {
-            final clientId = contract['clientId'] as String? ?? '';
-            await NotificationService().sendNotification(
-              userId: clientId,
-              type: NotificationType.contractCompleted,
-              title: 'Completion Requested',
-              message:
-                  'Freelancer marked "${contract['jobTitle'] ?? 'the job'}" as completed. Please review and finalize payment.',
-              actionUrl: '/contracts/${contractDoc.id}',
-              relatedJobId: contract['jobId'] ?? '',
-            );
-          } catch (_) {}
-
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Completion requested — waiting for client finalization',
-              ),
-            ),
-          );
-        } catch (e) {
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Failed: $e')));
-        }
-      },
-      icon: const Icon(Icons.check, size: 16),
-      label: const Text('Mark Complete'),
-    );
+    return 'No updates yet';
   }
 }

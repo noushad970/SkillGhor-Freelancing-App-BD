@@ -353,7 +353,7 @@ class NotificationService {
       userId: userId,
       type: NotificationType.paymentReceived,
       title: 'Payment Received',
-      message: 'You received ৳$amount for "$jobTitle"',
+      message: 'You received ৳${amount.toStringAsFixed(0)} for "$jobTitle"',
       actionUrl: '/wallet',
     );
   }

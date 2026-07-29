@@ -65,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Complete Your SkillGhor Profile'),
+        title: const Text('Complete Your Skill Ghor Profile'),
         backgroundColor: Colors.green.shade600,
         foregroundColor: Colors.white,
       ),
@@ -339,7 +339,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Welcome to SkillGhor!'),
+                                content: Text('Welcome to Skill Ghor!'),
                                 backgroundColor: Colors.green,
                               ),
                             );

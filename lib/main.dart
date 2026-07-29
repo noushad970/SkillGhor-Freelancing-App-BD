@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'theme/app_theme.dart';
 import 'screens/sign_in_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -25,11 +26,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Skill Ghor',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-      ),
+      theme: AppTheme.light(),
       home: const AuthGate(),
       routes: {
         '/home': (_) => const HomeScreen(),

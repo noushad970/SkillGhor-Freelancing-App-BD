@@ -14,7 +14,7 @@ class ReviewScreen extends StatefulWidget {
 }
 
 class _ReviewScreenState extends State<ReviewScreen> {
-  int _rating = 5;
+  int _rating = 0;
   final TextEditingController _commentController = TextEditingController();
   bool _submitting = false;
 
@@ -219,7 +219,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _submitting ? null : _submitReview,
+                onPressed: (_submitting || _rating == 0) ? null : _submitReview,
                 child: _submitting
                     ? const SizedBox(
                         height: 20,
@@ -229,7 +229,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           strokeWidth: 2,
                         ),
                       )
-                    : const Text('Submit Review'),
+                    : Text(
+                        _rating == 0 ? 'Tap a star to rate' : 'Submit Review',
+                      ),
               ),
             ),
           ],

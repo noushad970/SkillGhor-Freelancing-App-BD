@@ -46,7 +46,26 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || bio.length < 100) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fix the highlighted fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (bio.length < 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Bio must be at least 100 characters (currently ${bio.length})',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -59,9 +78,7 @@ class _ClientEditProfileScreenState extends State<ClientEditProfileScreen> {
         'username': username,
         'country': country,
         'bio': bio,
-        'companyName': companyName.isEmpty
-            ? companyName
-            : companyName, // one-time
+        'companyName': companyName.trim(),
         'profileCompletion': _calculateCompletion(),
       });
       ScaffoldMessenger.of(context).showSnackBar(

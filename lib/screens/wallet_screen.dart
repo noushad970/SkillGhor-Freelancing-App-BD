@@ -1,4 +1,4 @@
-// lib/screens/wallet_screen.dart
+﻿// lib/screens/wallet_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/payment_service.dart';
@@ -61,13 +61,7 @@ class WalletScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Withdrawal coming soon'),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: () => _showWithdrawDialog(context),
                                   icon: const Icon(Icons.payments),
                                   label: const Text('Withdraw'),
                                   style: ElevatedButton.styleFrom(
@@ -217,8 +211,9 @@ class WalletScreen extends StatelessWidget {
 
                                   return ListTile(
                                     leading: CircleAvatar(
-                                      backgroundColor: Colors.orange
-                                          .withValues(alpha: 0.2),
+                                      backgroundColor: Colors.orange.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       child: const Icon(
                                         Icons.money,
                                         color: Colors.orange,
@@ -300,5 +295,85 @@ class WalletScreen extends StatelessWidget {
       default:
         return Colors.grey;
     }
+  }
+
+  void _showWithdrawDialog(BuildContext context) {
+    final amountCtrl = TextEditingController();
+    final bankCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final paymentService = PaymentService();
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Request Withdrawal'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount (BDT)',
+                  prefixText: '\u09F3 ',
+                ),
+                validator: (v) {
+                  final n = double.tryParse(v?.trim() ?? '');
+                  if (n == null || n <= 0) return 'Enter a valid amount';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Bank Name'),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: bankCtrl,
+                decoration: const InputDecoration(labelText: 'Account Number'),
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              try {
+                await paymentService.requestWithdrawal(
+                  amount: double.parse(amountCtrl.text.trim()),
+                  bankName: nameCtrl.text.trim(),
+                  bankAccount: bankCtrl.text.trim(),
+                );
+                if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Withdrawal request submitted')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                  SnackBar(
+                    content: Text('Withdrawal failed: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
   }
 }
